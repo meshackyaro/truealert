@@ -10,7 +10,8 @@
     "sync-abi": "node scripts/sync-abi.mjs",
     "test": "vitest run",
     "local-chain": "scripts/local-chain.sh",
-    "dev-link": "tsx scripts/dev-link.ts"
+    "dev-link": "tsx scripts/dev-link.ts",
+    "e2e": "tsx e2e/buyer-flow.ts"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "2.2.11",
@@ -28,6 +29,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5",
