@@ -172,6 +172,23 @@ async function main() {
       }
     });
 
+    await scenario(context, "Protected: buyer extends the confirm deadline once by 48h", async (page) => {
+      const { id } = await fundProtected(page, "--item", "Wig");
+      await sellerDoes(trueAlert, "markShipped", id);
+      const read = () =>
+        client.readContract({ address: trueAlert, abi: trueAlertAbi, functionName: "getOrder", args: [id] });
+      const before = (await read()).confirmDeadline;
+      await page.getByRole("button", { name: "+48 hours" }).click();
+      await page.getByText("You've extended this delivery once").waitFor();
+      const after = await read();
+      if (after.confirmDeadline - before !== 48n * 3600n || !after.extended) {
+        throw new Error("confirm deadline should move by exactly 48h");
+      }
+      if (await page.getByRole("button", { name: "+24 hours" }).count()) {
+        throw new Error("a second extension should not be offered");
+      }
+    });
+
     await scenario(context, "Link reserved for another wallet can't be paid", async (page) => {
       const { url } = devLink("--buyer", SELLER);
       await page.goto(url);

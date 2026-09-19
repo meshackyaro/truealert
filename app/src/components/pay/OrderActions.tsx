@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 import { useAccount } from "wagmi";
+import { Button } from "@/components/Button";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { Notice } from "@/components/Shell";
 import { txStatusLabel, useContractTx } from "@/hooks/useContractTx";
 import { trueAlertAppAbi } from "@/lib/errors";
 import { formatNaira, shortAddress } from "@/lib/format";
-import type { Order } from "@/lib/invoice";
+import { OrderStatus, type Order } from "@/lib/invoice";
 import type { LinkPayload } from "@/lib/link";
 import { buyerActions } from "@/lib/orderStatus";
 import { WalletGate } from "./WalletGate";
 
-type BuyerCall = "confirmReceived" | "reclaim";
+type BuyerCall = "confirmReceived" | "reclaim" | "extend";
 
 type Props = {
   payload: LinkPayload;
@@ -36,6 +37,7 @@ function BuyerOnly({ payload, order, now, onChanged }: Props) {
   const { address } = useAccount();
   const tx = useContractTx();
   const [running, setRunning] = useState<BuyerCall>();
+  const [extendHours, setExtendHours] = useState<number>();
   const actions = buyerActions(order, now);
 
   if (address?.toLowerCase() !== order.buyer.toLowerCase()) {
@@ -49,14 +51,14 @@ function BuyerOnly({ payload, order, now, onChanged }: Props) {
 
   const busyLabel = txStatusLabel[tx.status] ?? "";
 
-  const call = async (functionName: BuyerCall) => {
+  const call = async (functionName: BuyerCall, extendBy?: number) => {
     setRunning(functionName);
-    const hash = await tx.send({
-      address: payload.contract,
-      abi: trueAlertAppAbi,
-      functionName,
-      args: [payload.terms.id],
-    });
+    const target = { address: payload.contract, abi: trueAlertAppAbi } as const;
+    const id = payload.terms.id;
+    const hash =
+      functionName === "extend"
+        ? await tx.send({ ...target, functionName, args: [id, extendBy ?? 48 * 3600] })
+        : await tx.send({ ...target, functionName, args: [id] });
     if (hash) onChanged();
   };
 
@@ -85,6 +87,34 @@ function BuyerOnly({ payload, order, now, onChanged }: Props) {
           confirmLabel={`Tap again to release ${price} to the seller`}
           onConfirm={() => call("confirmReceived")}
         />
+      )}
+      {actions.extend && (
+        <div className="rounded-xl bg-neutral-50 p-3">
+          <p className="text-sm font-medium">Not arrived yet?</p>
+          <p className="text-xs text-neutral-500">
+            Give the delivery more time. You can do this once.
+          </p>
+          <div className="mt-2 flex gap-2">
+            {[24, 48].map((hours) => (
+              <Button
+                key={hours}
+                variant="secondary"
+                className="min-h-10 text-sm"
+                busy={tx.busy && running === "extend" && extendHours === hours}
+                disabled={tx.busy}
+                onClick={() => {
+                  setExtendHours(hours);
+                  void call("extend", hours * 3600);
+                }}
+              >
+                +{hours} hours
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+      {order.extended && order.status === OrderStatus.Shipped && (
+        <p className="px-1 text-xs text-neutral-500">You&apos;ve extended this delivery once.</p>
       )}
       {tx.error && <p className="px-1 text-sm text-red-700">{tx.error}</p>}
     </div>
