@@ -14,7 +14,7 @@ import type { LinkPayload } from "@/lib/link";
 import { buyerActions } from "@/lib/orderStatus";
 import { WalletGate } from "./WalletGate";
 
-type BuyerCall = "confirmReceived" | "reclaim" | "extend" | "dispute";
+type BuyerCall = "confirmReceived" | "reclaim" | "extend" | "dispute" | "resolveTimeout";
 
 type Props = {
   payload: LinkPayload;
@@ -78,6 +78,13 @@ function BuyerOnly({ payload, order, now, onChanged }: Props) {
 
   return (
     <div className="space-y-3">
+      {actions.timeoutRefund && (
+        <ConfirmButton
+          {...state("resolveTimeout", "Get my full refund")}
+          confirmLabel={`Tap again to refund ${price} to your wallet`}
+          onConfirm={() => call("resolveTimeout")}
+        />
+      )}
       {actions.reclaim && (
         <ConfirmButton
           {...state("reclaim", "Take my money back")}

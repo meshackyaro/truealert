@@ -207,6 +207,22 @@ async function main() {
       if ((await orderStatus(trueAlert, id)) !== 3) throw new Error("order should still be Disputed");
     });
 
+    await scenario(context, "Protected: referee misses 14 days, buyer gets a full refund", async (page) => {
+      const { id } = await fundProtected(page, "--item", "Handbag");
+      const buyerBefore = await usdcBalance(BUYER);
+      await sellerDoes(trueAlert, "markShipped", id);
+      await page.getByRole("button", { name: "Report a problem" }).click();
+      await page.getByRole("button", { name: "Tap again to send this to TrueAlert Resolution" }).click();
+      await page.getByText("Under review", { exact: true }).first().waitFor();
+      await warp(14 * 24 * 3600 + 5);
+      await page.getByText("The referee didn't decide in time").waitFor();
+      await page.getByRole("button", { name: "Get my full refund" }).click();
+      await page.getByRole("button", { name: /^Tap again to refund ₦15,000/ }).click();
+      await page.getByText("Dispute settled ✓").waitFor();
+      if ((await orderStatus(trueAlert, id)) !== 6) throw new Error("order should be Resolved");
+      if ((await usdcBalance(BUYER)) - buyerBefore !== 10_922_754n) throw new Error("buyer should get it all back");
+    });
+
     await scenario(context, "Link reserved for another wallet can't be paid", async (page) => {
       const { url } = devLink("--buyer", SELLER);
       await page.goto(url);
