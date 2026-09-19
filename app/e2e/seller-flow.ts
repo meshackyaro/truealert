@@ -13,9 +13,11 @@ import {
   pageAs,
   scenario,
   SELLER,
+  sellerDoes,
   setEtnBalance,
   shots,
   usdcBalance,
+  warp,
 } from "./helpers";
 
 /** Creates a sale on /sell. Returns the link for Protected sales (pay-now shows a QR). */
@@ -119,6 +121,29 @@ async function main() {
         await buyer.reload();
         await buyer.getByText("Shipped · confirm when it arrives").waitFor();
         await buyer.close();
+      },
+      SELLER,
+    );
+
+    await scenario(
+      context,
+      "Protected: buyer goes silent, seller collects after the confirm deadline",
+      async (seller) => {
+        const url = (await createSale(seller, { protectedMode: true, item: "Wig", price: "15000" }))!;
+        const buyer = await pageAs(browser, BUYER);
+        await buyerPays(buyer, url, /^Pay safely ₦15,000/, (p) => p.getByText("Paid into escrow").first().waitFor());
+        await buyer.close();
+        const id = orderId(url);
+        await sellerDoes("markShipped", id);
+        await warp(24 * 3600 + 5);
+        const before = await usdcBalance(SELLER);
+        await seller.goto(url);
+        await seller.getByText("Ready to collect").waitFor();
+        await seller.getByRole("button", { name: "Collect ₦15,000" }).click();
+        await seller.getByRole("button", { name: "Tap again to collect ₦15,000" }).click();
+        await seller.getByText("Completed ✓").waitFor();
+        if ((await orderStatus(id)) !== 4) throw new Error("order should be Released");
+        if ((await usdcBalance(SELLER)) - before !== 10_930_000n) throw new Error("seller should collect 10.93 USDC");
       },
       SELLER,
     );
