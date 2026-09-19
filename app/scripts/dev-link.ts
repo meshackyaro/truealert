@@ -39,17 +39,31 @@ const option = (name: string) => {
 };
 
 const env = Object.fromEntries(
-  readFileSync(join(__dirname, "..", ".env.local"), "utf8")
+  readEnvLocal()
     .split("\n")
     .filter((l) => l.includes("=") && !l.startsWith("#"))
     .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1).trim()]),
 );
 
+function readEnvLocal(): string {
+  try {
+    return readFileSync(join(__dirname, "..", ".env.local"), "utf8");
+  } catch {
+    console.error("No app/.env.local yet. Start the local chain first with: pnpm local-chain");
+    process.exit(1);
+  }
+}
+
 async function main() {
   const contract = getAddress(env.NEXT_PUBLIC_TRUEALERT_ADDRESS);
   const usdc = getAddress(env.NEXT_PUBLIC_USDC_ADDRESS);
   const rpc = env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545";
-  const client = createPublicClient({ chain: foundry, transport: http(rpc) });
+  const client = createPublicClient({ chain: foundry, transport: http(rpc, { retryCount: 0, timeout: 3_000 }) });
+  try {
+    await client.getChainId();
+  } catch {
+    throw new Error(`Local chain isn't running at ${rpc}. Start it first with: pnpm local-chain`);
+  }
   const seller = privateKeyToAccount(SELLER_KEY);
 
   const protectedMode = flag("protected");
