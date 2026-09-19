@@ -30,6 +30,21 @@ contract TrueAlertAdminTest is TrueAlertBase {
         ta.setTokenAllowed(address(usdc), false);
     }
 
+    function test_PauseAndUnpause() public {
+        vm.prank(owner);
+        ta.pause();
+        assertTrue(ta.paused());
+        vm.prank(owner);
+        ta.unpause();
+        assertFalse(ta.paused());
+    }
+
+    function test_RevertWhen_NonOwnerPauses() public {
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        vm.prank(stranger);
+        ta.pause();
+    }
+
     function test_OwnershipTransferIsTwoStep() public {
         address next = makeAddr("next");
         vm.prank(owner);
