@@ -12,7 +12,8 @@
     "local-chain": "scripts/local-chain.sh",
     "dev-link": "tsx scripts/dev-link.ts",
     "e2e": "tsx e2e/buyer-flow.ts",
-    "testnet-smoke": "tsx scripts/testnet-smoke.ts"
+    "testnet-smoke": "tsx scripts/testnet-smoke.ts",
+    "e2e:seller": "tsx e2e/seller-flow.ts"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "2.2.11",
