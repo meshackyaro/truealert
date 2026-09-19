@@ -45,6 +45,63 @@ contract TrueAlertAdminTest is TrueAlertBase {
         ta.pause();
     }
 
+    function test_FeeStartsAtZero() public view {
+        assertEq(ta.feeBps(), 0);
+        assertEq(ta.feeRecipient(), address(0));
+    }
+
+    function test_SetFee() public {
+        address treasury = makeAddr("treasury");
+        vm.expectEmit(address(ta));
+        emit TrueAlert.FeeUpdated(150, treasury);
+        vm.prank(owner);
+        ta.setFee(150, treasury);
+        assertEq(ta.feeBps(), 150);
+        assertEq(ta.feeRecipient(), treasury);
+    }
+
+    function test_SetFeeAtCap() public {
+        vm.prank(owner);
+        ta.setFee(200, makeAddr("treasury"));
+        assertEq(ta.feeBps(), 200);
+    }
+
+    function test_RevertWhen_FeeAboveCap() public {
+        vm.expectRevert(abi.encodeWithSelector(TrueAlert.FeeTooHigh.selector, 201, 200));
+        vm.prank(owner);
+        ta.setFee(201, makeAddr("treasury"));
+    }
+
+    function test_RevertWhen_FeeWithoutRecipient() public {
+        vm.expectRevert(TrueAlert.ZeroFeeRecipient.selector);
+        vm.prank(owner);
+        ta.setFee(100, address(0));
+    }
+
+    function test_ZeroFeeAllowsZeroRecipient() public {
+        vm.prank(owner);
+        ta.setFee(0, address(0));
+        assertEq(ta.feeBps(), 0);
+    }
+
+    function test_RevertWhen_NonOwnerSetsFee() public {
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        vm.prank(stranger);
+        ta.setFee(100, stranger);
+    }
+
+    function testFuzz_FeeNeverExceedsCap(uint16 bps) public {
+        vm.prank(owner);
+        if (bps > 200) {
+            vm.expectRevert(abi.encodeWithSelector(TrueAlert.FeeTooHigh.selector, bps, 200));
+            ta.setFee(bps, makeAddr("treasury"));
+        } else {
+            ta.setFee(bps, makeAddr("treasury"));
+            assertEq(ta.feeBps(), bps);
+        }
+        assertLe(ta.feeBps(), 200);
+    }
+
     function test_OwnershipTransferIsTwoStep() public {
         address next = makeAddr("next");
         vm.prank(owner);
