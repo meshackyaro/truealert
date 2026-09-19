@@ -25,7 +25,9 @@ contract TrueAlertAdminTest is TrueAlertBase {
     }
 
     function test_RevertWhen_NonOwnerSetsToken() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        vm.expectRevert(
+            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger)
+        );
         vm.prank(stranger);
         ta.setTokenAllowed(address(usdc), false);
     }
@@ -40,7 +42,9 @@ contract TrueAlertAdminTest is TrueAlertBase {
     }
 
     function test_RevertWhen_NonOwnerPauses() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        vm.expectRevert(
+            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger)
+        );
         vm.prank(stranger);
         ta.pause();
     }
@@ -85,7 +89,9 @@ contract TrueAlertAdminTest is TrueAlertBase {
     }
 
     function test_RevertWhen_NonOwnerSetsFee() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        vm.expectRevert(
+            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger)
+        );
         vm.prank(stranger);
         ta.setFee(100, stranger);
     }

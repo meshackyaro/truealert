@@ -116,8 +116,8 @@ contract TrueAlertResolveTest is TrueAlertBase {
         sellerShare = bound(sellerShare, 0, PRICE);
         vm.prank(arbiter);
         ta.resolve(ID, sellerShare);
-        uint256 paidOut = usdc.balanceOf(seller) + usdc.balanceOf(treasury)
-            + (usdc.balanceOf(buyer) - buyerStart);
+        uint256 paidOut =
+            usdc.balanceOf(seller) + usdc.balanceOf(treasury) + (usdc.balanceOf(buyer) - buyerStart);
         assertEq(paidOut, PRICE);
         assertEq(usdc.balanceOf(address(ta)), 0);
     }

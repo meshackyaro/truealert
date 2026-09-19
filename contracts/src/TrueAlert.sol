@@ -249,8 +249,7 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         if (msg.sender == terms.seller) revert SellerCannotBuy();
         if (
             terms.shipWindow < MIN_SHIP_WINDOW || terms.shipWindow > MAX_SHIP_WINDOW
-                || terms.confirmWindow < MIN_CONFIRM_WINDOW
-                || terms.confirmWindow > MAX_CONFIRM_WINDOW
+                || terms.confirmWindow < MIN_CONFIRM_WINDOW || terms.confirmWindow > MAX_CONFIRM_WINDOW
         ) revert InvalidWindows();
         if (
             terms.arbiter != address(0)
