@@ -38,8 +38,10 @@ Electroneum Smart Chain supports opcodes up to **London**. It does not support `
 ```bash
 cp .env.example .env      # fill in PRIVATE_KEY (a dedicated testnet wallet)
 source .env
-forge script script/Deploy.s.sol --rpc-url electroneum_testnet --broadcast
+forge script script/Deploy.s.sol --rpc-url electroneum_testnet --broadcast --legacy
 ```
+
+`PRIVATE_KEY` must be `0x`-prefixed.
 
 Get testnet ETN for gas from the [Electroneum faucet](https://faucet.electroneum.com).
 
@@ -54,8 +56,12 @@ The script deploys `MockUSDC` (unless `USDC` is set), deploys `TrueAlert`, and a
 
 | Network | TrueAlert | USDC |
 | --- | --- | --- |
-| Testnet | _pending_ | _pending_ (MockUSDC) |
+| Testnet | [`0x83A51C54C78a84fAF09d34B92c8475B9F12a5d34`](https://testnet-blockexplorer.electroneum.com/address/0x83A51C54C78a84fAF09d34B92c8475B9F12a5d34) | [`0x3F2f8D53F9A306eF2A1eF819EC8844883c1916a5`](https://testnet-blockexplorer.electroneum.com/address/0x3F2f8D53F9A306eF2A1eF819EC8844883c1916a5) (MockUSDC) |
 | Mainnet | not deployed | `0x3187deAd7A2Bd6770F5Fe81495D1B715926AAe6e` (Hyperlane USDC) |
+
+Testnet deployment (19 Sep 2026): owner `0x43bcA2D4f5398117c3516499609c6e11909d90E9`, fee 0%. Transactions: [MockUSDC](https://testnet-blockexplorer.electroneum.com/tx/0xd5462c601af445a44002d474f46683d71b536126dc5a3b4355b08ccef6eaea9d), [TrueAlert](https://testnet-blockexplorer.electroneum.com/tx/0xba696c4f5ad261e68332a94d10fd8ee164fc435627297aa562fcbf05f694f2be), [allowlist USDC](https://testnet-blockexplorer.electroneum.com/tx/0xbbf9a989cc76054d6d36dbdb60e0aa06e990bc9e6143ecdfa30041f9701b0368).
+
+Deploy with `--legacy`: Foundry's EIP-1559 fee estimate on Electroneum comes out far below the node's ~1 gwei gas price.
 
 ## How TrueAlert works
 
