@@ -124,6 +124,7 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         address arbiter,
         uint16 feeBps
     );
+    event OrderShipped(bytes32 indexed id, uint64 confirmDeadline);
 
     error FeeTooHigh(uint16 feeBps, uint16 maxFeeBps);
     error ZeroFeeRecipient();
@@ -139,6 +140,9 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     error SellerCannotBuy();
     error InvalidWindows();
     error InvalidArbiter();
+    error NotSeller();
+    error InvalidStatus(Status current);
+    error DeadlinePassed();
 
     constructor(address initialOwner) Ownable(initialOwner) EIP712("TrueAlert", "1") {
         allowedToken[NATIVE] = true;
@@ -269,6 +273,19 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
             terms.arbiter,
             orderFeeBps
         );
+    }
+
+    /// @notice Seller confirms dispatch. Starts the buyer's confirm window.
+    function markShipped(bytes32 id) external {
+        Order storage o = _orders[id];
+        if (msg.sender != o.seller) revert NotSeller();
+        if (o.status != Status.Funded) revert InvalidStatus(o.status);
+        if (block.timestamp > o.shipDeadline) revert DeadlinePassed();
+
+        uint64 confirmDeadline = uint64(block.timestamp) + o.confirmWindow;
+        o.confirmDeadline = confirmDeadline;
+        o.status = Status.Shipped;
+        emit OrderShipped(id, confirmDeadline);
     }
 
     /// @notice Full state of a Protected order (status None if it doesn't exist).
