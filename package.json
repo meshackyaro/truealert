@@ -1,0 +1,14 @@
+{
+  "name": "truealert",
+  "private": true,
+  "description": "Run app commands from the repo root; they forward to app/.",
+  "scripts": {
+    "install:app": "pnpm --dir app install",
+    "local-chain": "pnpm --dir app local-chain",
+    "dev": "pnpm --dir app dev",
+    "dev-link": "pnpm --dir app dev-link",
+    "build": "pnpm --dir app build",
+    "test": "pnpm --dir app test && cd contracts && forge test",
+    "e2e": "pnpm --dir app e2e"
+  }
+}

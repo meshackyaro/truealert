@@ -20,11 +20,14 @@ Early development — MVP targets the Electroneum testnet (chain ID 5201420).
 
 ```bash
 git clone --recurse-submodules https://github.com/meshackyaro/truealert.git
-cd truealert/app && pnpm install
-pnpm local-chain        # terminal 1: local chain + contracts
+cd truealert
+pnpm install:app        # installs app/ dependencies
+pnpm local-chain        # terminal 1: local chain + contracts (keep it running)
 pnpm dev                # terminal 2: http://localhost:3000
-pnpm dev-link           # prints a signed test payment link
+pnpm dev-link           # terminal 3: prints a signed test payment link
 ```
+
+These commands work from the repo root or from `app/`.
 
 ## License
 
