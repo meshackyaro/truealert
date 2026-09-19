@@ -28,6 +28,22 @@ export function SellerActions({ payload, order, now, onChanged }: OrderActionPro
           onConfirm={() => call("claim")}
         />
       )}
+      {actions.cancel && (
+        <details className="rounded-xl bg-neutral-50 p-3 text-sm">
+          <summary className="cursor-pointer text-neutral-600">Can&apos;t fulfil this order?</summary>
+          <p className="mt-2 text-xs text-neutral-600">
+            Out of stock, or someone you don&apos;t know paid this link? Cancel and the buyer gets the full
+            amount back straight away.
+          </p>
+          <ConfirmButton
+            {...state("cancel", "Cancel and refund the buyer")}
+            variant="danger"
+            className="mt-2 min-h-10 text-sm"
+            confirmLabel={`Tap again to refund ${price} to the buyer`}
+            onConfirm={() => call("cancel")}
+          />
+        </details>
+      )}
       {tx.error && <p className="px-1 text-sm text-red-700">{tx.error}</p>}
     </div>
   );

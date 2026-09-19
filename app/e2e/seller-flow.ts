@@ -147,6 +147,26 @@ async function main() {
       },
       SELLER,
     );
+
+    await scenario(
+      context,
+      "Protected: seller cancels and the buyer is refunded in full",
+      async (seller) => {
+        const url = (await createSale(seller, { protectedMode: true, item: "Handbag", price: "15000" }))!;
+        const buyer = await pageAs(browser, BUYER);
+        await buyerPays(buyer, url, /^Pay safely ₦15,000/, (p) => p.getByText("Paid into escrow").first().waitFor());
+        await buyer.close();
+        const buyerBefore = await usdcBalance(BUYER);
+        await seller.getByRole("link", { name: "Manage this order" }).click();
+        await seller.getByText("Can't fulfil this order?").click();
+        await seller.getByRole("button", { name: "Cancel and refund the buyer" }).click();
+        await seller.getByRole("button", { name: "Tap again to refund ₦15,000 to the buyer" }).click();
+        await seller.getByRole("heading", { name: "Refunded" }).waitFor();
+        if ((await orderStatus(orderId(url))) !== 5) throw new Error("order should be Refunded");
+        if ((await usdcBalance(BUYER)) - buyerBefore !== 10_930_000n) throw new Error("buyer should get 10.93 USDC back");
+      },
+      SELLER,
+    );
   } finally {
     await browser.close();
   }
