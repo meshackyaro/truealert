@@ -59,6 +59,12 @@ async function main() {
   const usdcBalance = (owner: Address) =>
     client.readContract({ address: usdc, abi: erc20Abi, functionName: "balanceOf", args: [owner] });
 
+  // Fresh ETN for every run (each ETN order is ~9,600 ETN; anvil starts accounts at 10,000).
+  await client.request({
+    method: "anvil_setBalance" as never,
+    params: [BUYER, "0xd3c21bcecceda1000000"] as never, // 1,000,000 ETN
+  });
+
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   const context = await browser.newContext({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 1 });
 
@@ -92,7 +98,7 @@ async function main() {
       await page.getByText("Signed by the seller").waitFor();
       await connect(page);
       await page.getByRole("button", { name: /^Pay safely ₦15,000/ }).click();
-      await page.getByText("Payment held safely").waitFor();
+      await page.getByText("Paid into escrow · waiting for the seller to ship").waitFor();
       await page.screenshot({ path: join(shots, "protected-funded.png") });
 
       const locked = (await client.getBalance({ address: trueAlert })) - escrowBefore;

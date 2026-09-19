@@ -7,6 +7,7 @@ import { useInvoice } from "@/hooks/useInvoice";
 import { decodeLink, type LinkPayload } from "@/lib/link";
 import { Mode } from "@/lib/terms";
 import { InvoiceCard } from "./InvoiceCard";
+import { OrderPanel } from "./OrderPanel";
 import { PaidReceipt } from "./PaidReceipt";
 import { PaymentAction } from "./PaymentAction";
 import { WalletGate } from "./WalletGate";
@@ -86,11 +87,7 @@ function Invoice({ payload }: { payload: LinkPayload }) {
           />
         </WalletGate>
       )}
-      {view.kind === "order" && (
-        <Notice tone="success" title="Payment held safely ✓">
-          Your money is locked until you confirm delivery.
-        </Notice>
-      )}
+      {view.kind === "order" && <OrderPanel order={view.order} now={now} />}
     </>
   );
 }
