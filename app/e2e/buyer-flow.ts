@@ -157,6 +157,21 @@ async function main() {
       if ((await usdcBalance(SELLER)) <= sellerBefore) throw new Error("seller should be paid");
     });
 
+    await scenario(context, "Protected: seller never ships, buyer reclaims full refund", async (page) => {
+      const { id } = await fundProtected(page, "--item", "Sneakers");
+      const buyerBefore = await usdcBalance(BUYER);
+      await warp(24 * 3600 + 5);
+      await page.getByText("The seller didn't ship in time").waitFor();
+      await page.getByRole("button", { name: "Take my money back" }).click();
+      await page.getByRole("button", { name: /^Tap again to refund ₦15,000/ }).click();
+      await page.getByText("Refunded ✓").waitFor();
+      await page.screenshot({ path: join(shots, "protected-reclaimed.png") });
+      if ((await orderStatus(trueAlert, id)) !== 5) throw new Error("order should be Refunded");
+      if ((await usdcBalance(BUYER)) - buyerBefore !== 10_922_754n) {
+        throw new Error("buyer should get exactly the order amount back");
+      }
+    });
+
     await scenario(context, "Link reserved for another wallet can't be paid", async (page) => {
       const { url } = devLink("--buyer", SELLER);
       await page.goto(url);
