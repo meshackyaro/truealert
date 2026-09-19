@@ -401,6 +401,19 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         emit OrderResolved(id, sellerAmount, buyerAmount, fee, false);
     }
 
+    /// @notice If the arbiter never rules, anyone can trigger a full refund to
+    ///         the buyer after the arbiter deadline. This discourages sellers
+    ///         from naming an arbiter who won't respond.
+    function resolveTimeout(bytes32 id) external nonReentrant {
+        Order storage o = _orders[id];
+        if (o.status != Status.Disputed) revert InvalidStatus(o.status);
+        if (block.timestamp <= o.disputeDeadline) revert DeadlineNotReached();
+
+        o.status = Status.Resolved;
+        _payout(o.token, o.buyer, o.amount);
+        emit OrderResolved(id, 0, o.amount, 0, true);
+    }
+
     /// @notice Full state of a Protected order (status None if it doesn't exist).
     function getOrder(bytes32 id) external view returns (Order memory) {
         return _orders[id];
