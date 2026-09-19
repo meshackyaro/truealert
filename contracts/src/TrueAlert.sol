@@ -90,6 +90,8 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     uint32 public constant MAX_SHIP_WINDOW = 14 days;
     uint32 public constant MIN_CONFIRM_WINDOW = 12 hours;
     uint32 public constant MAX_CONFIRM_WINDOW = 14 days;
+    /// @notice Longest one-time extension a buyer may add to the confirm deadline.
+    uint32 public constant MAX_EXTENSION = 48 hours;
 
     /// @notice Tokens accepted for new invoices and orders (NATIVE included).
     mapping(address token => bool) public allowedToken;
@@ -127,6 +129,7 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     event OrderShipped(bytes32 indexed id, uint64 confirmDeadline);
     event OrderReleased(bytes32 indexed id, uint256 sellerAmount, uint256 fee);
     event OrderRefunded(bytes32 indexed id, uint256 amount);
+    event OrderExtended(bytes32 indexed id, uint64 confirmDeadline);
 
     error FeeTooHigh(uint16 feeBps, uint16 maxFeeBps);
     error ZeroFeeRecipient();
@@ -147,6 +150,8 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     error InvalidStatus(Status current);
     error DeadlinePassed();
     error DeadlineNotReached();
+    error AlreadyExtended();
+    error InvalidExtension();
 
     constructor(address initialOwner) Ownable(initialOwner) EIP712("TrueAlert", "1") {
         allowedToken[NATIVE] = true;
@@ -333,6 +338,22 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
             revert InvalidStatus(o.status);
         }
         _refund(id, o);
+    }
+
+    /// @notice Buyer pushes the confirm deadline out once ("rider hasn't
+    ///         arrived yet"), by up to MAX_EXTENSION.
+    function extend(bytes32 id, uint32 extraSeconds) external {
+        Order storage o = _orders[id];
+        if (msg.sender != o.buyer) revert NotBuyer();
+        if (o.status != Status.Shipped) revert InvalidStatus(o.status);
+        if (o.extended) revert AlreadyExtended();
+        if (block.timestamp > o.confirmDeadline) revert DeadlinePassed();
+        if (extraSeconds == 0 || extraSeconds > MAX_EXTENSION) revert InvalidExtension();
+
+        o.extended = true;
+        uint64 confirmDeadline = o.confirmDeadline + extraSeconds;
+        o.confirmDeadline = confirmDeadline;
+        emit OrderExtended(id, confirmDeadline);
     }
 
     /// @notice Full state of a Protected order (status None if it doesn't exist).
