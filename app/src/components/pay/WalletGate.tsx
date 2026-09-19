@@ -7,6 +7,7 @@ import { env } from "@/config/env";
 import { friendlyError } from "@/lib/errors";
 import { shortAddress } from "@/lib/format";
 import { Button } from "@/components/Button";
+import { useHydrated } from "@/hooks/useHydrated";
 
 /**
  * Renders `children` only once a wallet is connected on the right chain;
@@ -17,11 +18,16 @@ export function WalletGate({ children, prompt }: { children: ReactNode; prompt: 
   const { openConnectModal } = useConnectModal();
   const { switchChain, isPending: switching, error: switchError } = useSwitchChain();
   const { disconnect } = useDisconnect();
+  const hydrated = useHydrated();
 
   if (!isConnected || !address) {
+    // Before hydration a tap does nothing, and RainbowKit only provides
+    // openConnectModal once wallets are ready (with WalletConnect that takes a
+    // few seconds on slow links). Show loading rather than a dead button.
+    const ready = hydrated && !!openConnectModal;
     return (
-      <Button onClick={openConnectModal} busy={isConnecting || isReconnecting}>
-        {prompt}
+      <Button onClick={openConnectModal} busy={isConnecting || isReconnecting || !ready}>
+        {ready ? prompt : "Loading wallets…"}
       </Button>
     );
   }
