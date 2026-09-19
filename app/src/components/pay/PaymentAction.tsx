@@ -9,6 +9,7 @@ import { faucetUrl } from "@/config/chains";
 import type { Token } from "@/config/tokens";
 import { txStatusLabel, useContractTx } from "@/hooks/useContractTx";
 import { useGasBalance, useTokenBalance } from "@/hooks/useTokenBalance";
+import { mockUsdcAbi } from "@/lib/abi/mockUsdc";
 import { trueAlertAppAbi } from "@/lib/errors";
 import { formatNaira, formatTokenAmount, shortAddress } from "@/lib/format";
 import { isReservedForSomeoneElse } from "@/lib/invoice";
@@ -29,6 +30,7 @@ export function PaymentAction({ payload, token, onDone }: Props) {
   const { terms, details } = payload;
   const { address } = useAccount();
   const approveTx = useContractTx();
+  const mintTx = useContractTx();
   const payTx = useContractTx();
   const balance = useTokenBalance(token, address);
   const gas = useGasBalance(address);
@@ -55,6 +57,22 @@ export function PaymentAction({ payload, token, onDone }: Props) {
   const notEnough = balance.value !== undefined && balance.value < terms.amount;
   const noGas = gas === 0n;
   const needsApproval = !token.native && (allowance.data ?? 0n) < terms.amount;
+
+  // Testnet only: MockUSDC lets anyone mint up to 10,000 per call.
+  const canMintTestUsdc = env.chainKey !== "mainnet" && !token.native;
+  const mintTestUsdc = async () => {
+    if (!address) return;
+    const unit = 10n ** BigInt(token.decimals);
+    const wanted = terms.amount + 100n * unit; // the invoice plus some spare
+    const maxMint = 10_000n * unit;
+    const hash = await mintTx.send({
+      address: token.address,
+      abi: mockUsdcAbi,
+      functionName: "mint",
+      args: [address, wanted < maxMint ? wanted : maxMint],
+    });
+    if (hash) await balance.refetch();
+  };
 
   const approve = async () => {
     const hash = await approveTx.send({
@@ -88,6 +106,13 @@ export function PaymentAction({ payload, token, onDone }: Props) {
           `Your balance: ${formatTokenAmount(balance.value, token.decimals)} ${token.symbol}`}
         {notEnough && " (not enough for this payment)"}
       </p>
+
+      {notEnough && canMintTestUsdc && (
+        <Button variant="secondary" onClick={mintTestUsdc} busy={mintTx.busy}>
+          {mintTx.busy ? txStatusLabel[mintTx.status] : "Get free test USDC"}
+        </Button>
+      )}
+      {mintTx.error && <p className="px-1 text-sm text-red-700">{mintTx.error}</p>}
 
       {noGas && (
         <Notice tone="warning" title="You need a little ETN for the network fee">

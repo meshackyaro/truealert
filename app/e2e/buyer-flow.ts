@@ -9,6 +9,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type BrowserContext, type Page } from "playwright";
 import { createPublicClient, createWalletClient, erc20Abi, http, type Address, type Hex } from "viem";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
 import { trueAlertAbi } from "../src/lib/abi/trueAlert";
 import { decodeLink } from "../src/lib/link";
@@ -17,6 +18,7 @@ import { injectTestWallet } from "./testWallet";
 const RPC = "http://127.0.0.1:8545";
 const BUYER: Address = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC";
 const SELLER: Address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+
 const shots = join(__dirname, "screenshots");
 mkdirSync(shots, { recursive: true });
 
@@ -76,10 +78,15 @@ async function connect(page: Page) {
 }
 
 /** Runs one scenario in a fresh page with the test wallet; screenshots on failure. */
-async function scenario(context: BrowserContext, name: string, fn: (page: Page) => Promise<void>) {
+async function scenario(
+  context: BrowserContext,
+  name: string,
+  fn: (page: Page) => Promise<void>,
+  account: Address = BUYER,
+) {
   process.stdout.write(`• ${name} … `);
   const page = await context.newPage();
-  await injectTestWallet(page, { account: BUYER, rpcUrl: RPC, chainId: foundry.id });
+  await injectTestWallet(page, { account, rpcUrl: RPC, chainId: foundry.id });
   try {
     await fn(page);
     console.log("ok");
@@ -98,6 +105,14 @@ async function main() {
   const trueAlert = envAddress("NEXT_PUBLIC_TRUEALERT_ADDRESS");
   const usdcBalance = (owner: Address) =>
     client.readContract({ address: usdc, abi: erc20Abi, functionName: "balanceOf", args: [owner] });
+
+  // A brand-new buyer each run (no USDC yet), impersonated so anvil signs for it.
+  const freshBuyer = privateKeyToAccount(generatePrivateKey()).address;
+  await client.request({ method: "anvil_impersonateAccount" as never, params: [freshBuyer] as never });
+  await client.request({
+    method: "anvil_setBalance" as never,
+    params: [freshBuyer, "0x56bc75e2d63100000"] as never, // 100 ETN for gas
+  });
 
   // Fresh ETN for every run (each ETN order is ~9,600 ETN; anvil starts accounts at 10,000).
   await client.request({
@@ -222,6 +237,22 @@ async function main() {
       if ((await orderStatus(trueAlert, id)) !== 6) throw new Error("order should be Resolved");
       if ((await usdcBalance(BUYER)) - buyerBefore !== 10_922_754n) throw new Error("buyer should get it all back");
     });
+
+    await scenario(
+      context,
+      "New buyer with no USDC mints test USDC, then pays",
+      async (page) => {
+        const { url } = devLink("--item", "Airtime", "--price", "1000");
+        await page.goto(url);
+        await connect(page);
+        await page.getByText("(not enough for this payment)").waitFor();
+        await page.getByRole("button", { name: "Get free test USDC" }).click();
+        await page.getByRole("button", { name: /^Allow / }).click();
+        await page.getByRole("button", { name: /^Pay ₦1,000/ }).click();
+        await page.getByRole("heading", { name: "Paid" }).waitFor();
+      },
+      freshBuyer,
+    );
 
     await scenario(context, "Link reserved for another wallet can't be paid", async (page) => {
       const { url } = devLink("--buyer", SELLER);
