@@ -88,5 +88,6 @@ describe("orderSteps", () => {
   it("labels refunds and disputes", () => {
     expect(orderSteps({ ...order, status: OrderStatus.Refunded }).at(-1)?.label).toBe("Refunded");
     expect(orderSteps(disputed)[2].label).toBe("Under review");
+    expect(orderSteps(disputed)[3].label).toBe("Decision");
   });
 });

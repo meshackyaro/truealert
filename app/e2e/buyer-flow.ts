@@ -32,7 +32,8 @@ function orderId(url: string): Hex {
 
 async function sellerDoes(contract: Address, functionName: "markShipped" | "claim" | "cancel", id: Hex) {
   const hash = await sellerWallet.writeContract({ address: contract, abi: trueAlertAbi, functionName, args: [id] });
-  await client.waitForTransactionReceipt({ hash });
+  const receipt = await client.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error(`seller ${functionName} reverted`);
 }
 
 /** Fast-forward the chain clock and mine a block. */
@@ -111,6 +112,7 @@ async function main() {
     await scenario(context, "Pay now in USDC: approve, pay, seller receives funds", async (page) => {
       const { url } = devLink("--item", "Phone credit", "--price", "2500");
       const sellerBefore = await usdcBalance(SELLER);
+      const escrowBefore = await usdcBalance(trueAlert); // other runs' open orders
 
       await page.goto(url);
       await page.getByText("Signed by the seller").waitFor();
@@ -122,7 +124,9 @@ async function main() {
 
       const received = (await usdcBalance(SELLER)) - sellerBefore;
       if (received < 1_800_000n || received > 1_830_000n) throw new Error(`seller got ${received}`);
-      if ((await usdcBalance(trueAlert)) !== 0n) throw new Error("contract should hold no pay-now funds");
+      if ((await usdcBalance(trueAlert)) !== escrowBefore) {
+        throw new Error("pay-now must not leave funds in the contract");
+      }
 
       // Reopening the same link now shows it as paid.
       await page.goto(url);
@@ -187,6 +191,20 @@ async function main() {
       if (await page.getByRole("button", { name: "+24 hours" }).count()) {
         throw new Error("a second extension should not be offered");
       }
+    });
+
+    await scenario(context, "Protected: buyer reports a problem, order frozen for the referee", async (page) => {
+      const { id } = await fundProtected(page, "--item", "Phone case");
+      await sellerDoes(trueAlert, "markShipped", id);
+      await page.getByRole("button", { name: "Report a problem" }).click();
+      await page.getByRole("button", { name: "Tap again to send this to TrueAlert Resolution" }).click();
+      await page.getByText("Under review", { exact: true }).first().waitFor();
+      await page.screenshot({ path: join(shots, "protected-disputed.png") });
+      if ((await orderStatus(trueAlert, id)) !== 3) throw new Error("order should be Disputed");
+      await warp(3 * 24 * 3600);
+      const claimed = await sellerDoes(trueAlert, "claim", id).then(() => true, () => false);
+      if (claimed) throw new Error("seller must not be able to claim a disputed order");
+      if ((await orderStatus(trueAlert, id)) !== 3) throw new Error("order should still be Disputed");
     });
 
     await scenario(context, "Link reserved for another wallet can't be paid", async (page) => {

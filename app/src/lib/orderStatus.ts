@@ -49,7 +49,13 @@ export function orderSteps(order: Order): { label: string; state: "done" | "curr
   const shipped = s === OrderStatus.Shipped || s === OrderStatus.Disputed || s === OrderStatus.Released || s === OrderStatus.Resolved;
   const closed = s === OrderStatus.Released || s === OrderStatus.Refunded || s === OrderStatus.Resolved;
   const finalLabel =
-    s === OrderStatus.Refunded ? "Refunded" : s === OrderStatus.Resolved ? "Resolved" : "Seller paid";
+    s === OrderStatus.Refunded
+      ? "Refunded"
+      : s === OrderStatus.Resolved
+        ? "Resolved"
+        : s === OrderStatus.Disputed
+          ? "Decision"
+          : "Seller paid";
   return [
     { label: "Paid into escrow", state: "done" },
     {
