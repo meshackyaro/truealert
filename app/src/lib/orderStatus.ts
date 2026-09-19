@@ -43,6 +43,25 @@ export function buyerActions(order: Order, nowSeconds: number) {
   };
 }
 
+/** Seller actions the contract will accept right now. */
+export function sellerActions(order: Order, nowSeconds: number) {
+  const phase = orderPhase(order, nowSeconds);
+  return {
+    ship: phase === "awaiting-shipment",
+    claim: phase === "confirm-overdue",
+    cancel: order.status === OrderStatus.Funded || order.status === OrderStatus.Shipped,
+  };
+}
+
+export type Viewer = "buyer" | "seller" | "other";
+
+export function viewerOf(order: Order, account: string | undefined): Viewer {
+  const a = account?.toLowerCase();
+  if (a && a === order.buyer.toLowerCase()) return "buyer";
+  if (a && a === order.seller.toLowerCase()) return "seller";
+  return "other";
+}
+
 /** The step-by-step progress shown on the order, as [label, state] pairs. */
 export function orderSteps(order: Order): { label: string; state: "done" | "current" | "todo" }[] {
   const s = order.status;

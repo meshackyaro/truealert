@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import type { Hash } from "viem";
+import { useAccount } from "wagmi";
 import { Notice } from "@/components/Shell";
 import { useInvoice } from "@/hooks/useInvoice";
 import { decodeLink, type LinkPayload } from "@/lib/link";
+import { viewerOf } from "@/lib/orderStatus";
 import { Mode } from "@/lib/terms";
 import { InvoiceCard } from "./InvoiceCard";
 import { OrderActions } from "./OrderActions";
@@ -35,6 +37,7 @@ export function PayScreen({ encoded }: { encoded: string }) {
 
 function Invoice({ payload }: { payload: LinkPayload }) {
   const { view, token, now, refetch } = useInvoice(payload);
+  const { address } = useAccount();
   const [paidHash, setPaidHash] = useState<Hash>();
 
   if (!token) return <ViewNotice view={{ kind: "unsupported-token" }} />;
@@ -89,7 +92,7 @@ function Invoice({ payload }: { payload: LinkPayload }) {
         </WalletGate>
       )}
       {view.kind === "order" && (
-        <OrderPanel order={view.order} now={now}>
+        <OrderPanel order={view.order} now={now} viewer={viewerOf(view.order, address)}>
           {now !== undefined && (
             <OrderActions
               payload={payload}

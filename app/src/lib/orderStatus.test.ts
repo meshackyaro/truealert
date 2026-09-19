@@ -1,7 +1,7 @@
 import { zeroAddress } from "viem";
 import { describe, expect, it } from "vitest";
 import { OrderStatus, type Order } from "./invoice";
-import { buyerActions, orderPhase, orderSteps } from "./orderStatus";
+import { buyerActions, orderPhase, orderSteps, sellerActions, viewerOf } from "./orderStatus";
 
 const order: Order = {
   seller: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
@@ -89,5 +89,35 @@ describe("orderSteps", () => {
     expect(orderSteps({ ...order, status: OrderStatus.Refunded }).at(-1)?.label).toBe("Refunded");
     expect(orderSteps(disputed)[2].label).toBe("Under review");
     expect(orderSteps(disputed)[3].label).toBe("Decision");
+  });
+});
+
+describe("sellerActions", () => {
+  it("ship while funded and before the ship deadline; cancel any time before release", () => {
+    expect(sellerActions(order, 1_000)).toEqual({ ship: true, claim: false, cancel: true });
+  });
+
+  it("no shipping after the ship deadline (buyer can reclaim instead)", () => {
+    expect(sellerActions(order, 1_001)).toEqual({ ship: false, claim: false, cancel: true });
+  });
+
+  it("claim only after the confirm deadline", () => {
+    expect(sellerActions(shipped, 2_000).claim).toBe(false);
+    expect(sellerActions(shipped, 2_001)).toEqual({ ship: false, claim: true, cancel: true });
+  });
+
+  it("nothing while disputed or closed", () => {
+    const none = { ship: false, claim: false, cancel: false };
+    expect(sellerActions(disputed, 9_999)).toEqual(none);
+    expect(sellerActions({ ...order, status: OrderStatus.Released }, 0)).toEqual(none);
+  });
+});
+
+describe("viewerOf", () => {
+  it("identifies buyer and seller case-insensitively", () => {
+    expect(viewerOf(order, order.buyer.toLowerCase())).toBe("buyer");
+    expect(viewerOf(order, order.seller)).toBe("seller");
+    expect(viewerOf(order, undefined)).toBe("other");
+    expect(viewerOf(order, "0x0000000000000000000000000000000000000001")).toBe("other");
   });
 });

@@ -4,9 +4,48 @@ import type { ReactNode } from "react";
 import { Card } from "@/components/Shell";
 import type { Order } from "@/lib/invoice";
 import { formatDeadline, formatTimeLeft } from "@/lib/format";
-import { orderPhase, orderSteps, type OrderPhase } from "@/lib/orderStatus";
+import { orderPhase, orderSteps, type OrderPhase, type Viewer } from "@/lib/orderStatus";
 
-function headline(phase: OrderPhase, order: Order, now: number): { title: string; body: string } {
+type Headline = { title: string; body: string };
+
+function sellerHeadline(phase: OrderPhase, order: Order, now: number): Headline | undefined {
+  switch (phase) {
+    case "awaiting-shipment":
+      return {
+        title: "Buyer paid ✓ · ship the order",
+        body: `The payment is held safely for you. Ship by ${formatDeadline(order.shipDeadline)} (${formatTimeLeft(order.shipDeadline, now)}), then tap "Mark as shipped".`,
+      };
+    case "ship-overdue":
+      return {
+        title: "Ship deadline passed",
+        body: "The buyer can now take their money back. If you still want to deliver, agree it with the buyer first.",
+      };
+    case "shipped":
+      return {
+        title: "Shipped · waiting for the buyer",
+        body: `The buyer has until ${formatDeadline(order.confirmDeadline)} (${formatTimeLeft(order.confirmDeadline, now)}) to confirm or report a problem. After that you can collect.`,
+      };
+    case "confirm-overdue":
+      return { title: "Ready to collect", body: "The buyer didn't respond in time. Collect your payment now." };
+    case "disputed":
+      return {
+        title: "Under review",
+        body: `The buyer reported a problem. The referee decides by ${formatDeadline(order.disputeDeadline)}. The money stays locked until then.`,
+      };
+    case "released":
+      return { title: "Completed ✓", body: "You've been paid. The money is in your wallet." };
+    case "refunded":
+      return { title: "Refunded", body: "The full amount went back to the buyer." };
+    default:
+      return undefined;
+  }
+}
+
+function headline(phase: OrderPhase, order: Order, now: number, viewer: Viewer): Headline {
+  if (viewer === "seller") {
+    const seller = sellerHeadline(phase, order, now);
+    if (seller) return seller;
+  }
   switch (phase) {
     case "awaiting-shipment":
       return {
@@ -48,10 +87,20 @@ function headline(phase: OrderPhase, order: Order, now: number): { title: string
 }
 
 /** Where a Protected order stands, with the buyer's available actions below. */
-export function OrderPanel({ order, now, children }: { order: Order; now: number | undefined; children?: ReactNode }) {
+export function OrderPanel({
+  order,
+  now,
+  viewer,
+  children,
+}: {
+  order: Order;
+  now: number | undefined;
+  viewer: Viewer;
+  children?: ReactNode;
+}) {
   const t = now ?? 0;
   const phase = orderPhase(order, t);
-  const { title, body } = headline(phase, order, t);
+  const { title, body } = headline(phase, order, t, viewer);
   return (
     <Card>
       <ol className="mb-4 flex gap-1" aria-label="Order progress">
