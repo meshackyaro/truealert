@@ -92,6 +92,8 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     uint32 public constant MAX_CONFIRM_WINDOW = 14 days;
     /// @notice Longest one-time extension a buyer may add to the confirm deadline.
     uint32 public constant MAX_EXTENSION = 48 hours;
+    /// @notice How long an arbiter has to rule before the buyer is refunded.
+    uint32 public constant ARBITER_WINDOW = 14 days;
 
     /// @notice Tokens accepted for new invoices and orders (NATIVE included).
     mapping(address token => bool) public allowedToken;
@@ -130,6 +132,7 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     event OrderReleased(bytes32 indexed id, uint256 sellerAmount, uint256 fee);
     event OrderRefunded(bytes32 indexed id, uint256 amount);
     event OrderExtended(bytes32 indexed id, uint64 confirmDeadline);
+    event OrderDisputed(bytes32 indexed id, address indexed arbiter, uint64 disputeDeadline);
 
     error FeeTooHigh(uint16 feeBps, uint16 maxFeeBps);
     error ZeroFeeRecipient();
@@ -152,6 +155,7 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     error DeadlineNotReached();
     error AlreadyExtended();
     error InvalidExtension();
+    error NoArbiter();
 
     constructor(address initialOwner) Ownable(initialOwner) EIP712("TrueAlert", "1") {
         allowedToken[NATIVE] = true;
@@ -354,6 +358,22 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         uint64 confirmDeadline = o.confirmDeadline + extraSeconds;
         o.confirmDeadline = confirmDeadline;
         emit OrderExtended(id, confirmDeadline);
+    }
+
+    /// @notice Buyer disputes a shipped order (e.g. nothing arrived, wrong
+    ///         item). Freezes claim, confirm and cancel; the arbiter named in
+    ///         the signed terms has ARBITER_WINDOW to rule. One per order.
+    function dispute(bytes32 id) external {
+        Order storage o = _orders[id];
+        if (msg.sender != o.buyer) revert NotBuyer();
+        if (o.status != Status.Shipped) revert InvalidStatus(o.status);
+        if (o.arbiter == address(0)) revert NoArbiter();
+        if (block.timestamp > o.confirmDeadline) revert DeadlinePassed();
+
+        uint64 disputeDeadline = uint64(block.timestamp) + ARBITER_WINDOW;
+        o.disputeDeadline = disputeDeadline;
+        o.status = Status.Disputed;
+        emit OrderDisputed(id, o.arbiter, disputeDeadline);
     }
 
     /// @notice Full state of a Protected order (status None if it doesn't exist).
