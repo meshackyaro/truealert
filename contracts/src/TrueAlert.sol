@@ -125,6 +125,7 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         uint16 feeBps
     );
     event OrderShipped(bytes32 indexed id, uint64 confirmDeadline);
+    event OrderReleased(bytes32 indexed id, uint256 sellerAmount, uint256 fee);
 
     error FeeTooHigh(uint16 feeBps, uint16 maxFeeBps);
     error ZeroFeeRecipient();
@@ -141,6 +142,7 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     error InvalidWindows();
     error InvalidArbiter();
     error NotSeller();
+    error NotBuyer();
     error InvalidStatus(Status current);
     error DeadlinePassed();
 
@@ -288,6 +290,17 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         emit OrderShipped(id, confirmDeadline);
     }
 
+    /// @notice Buyer confirms they received the item; pays the seller now.
+    ///         Allowed before shipping too (e.g. collected in person).
+    function confirmReceived(bytes32 id) external nonReentrant {
+        Order storage o = _orders[id];
+        if (msg.sender != o.buyer) revert NotBuyer();
+        if (o.status != Status.Funded && o.status != Status.Shipped) {
+            revert InvalidStatus(o.status);
+        }
+        _release(id, o);
+    }
+
     /// @notice Full state of a Protected order (status None if it doesn't exist).
     function getOrder(bytes32 id) external view returns (Order memory) {
         return _orders[id];
@@ -307,6 +320,30 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         if (terms.buyer != address(0) && terms.buyer != msg.sender) revert NotDesignatedBuyer();
         if (!isValidSellerSignature(terms, signature)) revert InvalidSignature();
         used[terms.id] = true;
+    }
+
+    /// @dev Pays the whole order to the seller, less the snapshotted fee.
+    function _release(bytes32 id, Order storage o) internal {
+        o.status = Status.Released;
+        uint256 fee = _feeOn(o.amount, o.feeBps);
+        uint256 sellerAmount = o.amount - fee;
+        _payout(o.token, o.seller, sellerAmount);
+        _payout(o.token, feeRecipient, fee);
+        emit OrderReleased(id, sellerAmount, fee);
+    }
+
+    /// @dev Fee is waived if no recipient is set, so a later `setFee(0, 0)`
+    ///      can never strand funds in orders funded under a non-zero fee.
+    function _feeOn(uint256 amount, uint16 bps) internal view returns (uint256) {
+        if (feeRecipient == address(0)) return 0;
+        return amount * bps / BPS_DENOMINATOR;
+    }
+
+    /// @dev Transfers out of escrow. Zero amounts are skipped.
+    function _payout(address token, address to, uint256 amount) internal {
+        if (amount == 0) return;
+        if (token == NATIVE) _sendNative(to, amount);
+        else IERC20(token).safeTransfer(to, amount);
     }
 
     function _sendNative(address to, uint256 amount) internal {
