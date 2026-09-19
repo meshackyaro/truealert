@@ -36,3 +36,9 @@ export const chains: Record<ChainKey, Chain> = {
 };
 
 export const faucetUrl = "https://faucet.electroneum.com";
+
+/** Block-explorer URL for a transaction, if the chain has an explorer. */
+export function txUrl(chain: Chain, hash: string): string | undefined {
+  const base = chain.blockExplorers?.default.url;
+  return base ? `${base}/tx/${hash}` : undefined;
+}

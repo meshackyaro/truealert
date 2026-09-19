@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
+import type { Hash } from "viem";
 import { Notice } from "@/components/Shell";
 import { useInvoice } from "@/hooks/useInvoice";
 import { decodeLink, type LinkPayload } from "@/lib/link";
-import { BalanceLine } from "./BalanceLine";
+import { Mode } from "@/lib/terms";
 import { InvoiceCard } from "./InvoiceCard";
+import { PaidReceipt } from "./PaidReceipt";
+import { PaymentAction } from "./PaymentAction";
 import { WalletGate } from "./WalletGate";
 import { ViewNotice } from "./ViewNotice";
 
@@ -28,9 +32,14 @@ export function PayScreen({ encoded }: { encoded: string }) {
 }
 
 function Invoice({ payload }: { payload: LinkPayload }) {
-  const { view, token, now } = useInvoice(payload);
+  const { view, token, now, refetch } = useInvoice(payload);
+  const [paidHash, setPaidHash] = useState<Hash>();
 
   if (!token) return <ViewNotice view={{ kind: "unsupported-token" }} />;
+
+  if (paidHash && payload.terms.mode === Mode.PayNow) {
+    return <PaidReceipt payload={payload} token={token} hash={paidHash} />;
+  }
 
   const untrusted = view.kind === "invalid-signature" || view.kind === "wrong-network";
   const verified = !untrusted && view.kind !== "loading" && view.kind !== "unavailable";
@@ -67,8 +76,20 @@ function Invoice({ payload }: { payload: LinkPayload }) {
       <ViewNotice view={view} />
       {view.kind === "payable" && (
         <WalletGate prompt="Connect wallet to pay">
-          <BalanceLine token={token} needed={payload.terms.amount} />
+          <PaymentAction
+            payload={payload}
+            token={token}
+            onDone={(hash) => {
+              setPaidHash(hash);
+              void refetch();
+            }}
+          />
         </WalletGate>
+      )}
+      {view.kind === "order" && (
+        <Notice tone="success" title="Payment held safely ✓">
+          Your money is locked until you confirm delivery.
+        </Notice>
       )}
     </>
   );
