@@ -42,6 +42,32 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         bytes32 ref; // hash of off-chain order details
     }
 
+    enum Status {
+        None,
+        Funded,
+        Shipped,
+        Disputed,
+        Released,
+        Refunded,
+        Resolved
+    }
+
+    /// @notice A funded Protected order. Field order packs into 5 slots.
+    struct Order {
+        address seller;
+        uint64 shipDeadline;
+        address buyer;
+        uint64 confirmDeadline; // set when shipped
+        address token;
+        uint64 disputeDeadline; // set when disputed
+        address arbiter;
+        uint32 confirmWindow;
+        uint16 feeBps; // snapshotted at funding
+        Status status;
+        bool extended;
+        uint256 amount;
+    }
+
     bytes32 public constant TERMS_TYPEHASH = keccak256(
         "Terms(bytes32 id,uint8 mode,address seller,address token,uint256 amount,uint64 expiry,"
         "address buyer,uint32 shipWindow,uint32 confirmWindow,address arbiter,bytes32 ref)"
@@ -58,6 +84,13 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     uint16 public constant MAX_FEE_BPS = 200;
     uint16 internal constant BPS_DENOMINATOR = 10_000;
 
+    /// @notice Bounds on seller-chosen windows. The 12h confirm minimum stops a
+    ///         seller from marking shipped and claiming before the buyer can react.
+    uint32 public constant MIN_SHIP_WINDOW = 1 hours;
+    uint32 public constant MAX_SHIP_WINDOW = 14 days;
+    uint32 public constant MIN_CONFIRM_WINDOW = 12 hours;
+    uint32 public constant MAX_CONFIRM_WINDOW = 14 days;
+
     /// @notice Tokens accepted for new invoices and orders (NATIVE included).
     mapping(address token => bool) public allowedToken;
 
@@ -70,6 +103,8 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     /// @notice Terms IDs already paid or funded. Shared by both modes.
     mapping(bytes32 id => bool) public used;
 
+    mapping(bytes32 id => Order) internal _orders;
+
     event TokenAllowed(address indexed token, bool allowed);
     event FeeUpdated(uint16 feeBps, address feeRecipient);
     event InvoicePaid(
@@ -78,6 +113,16 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         address indexed buyer,
         address token,
         uint256 amount
+    );
+    event OrderFunded(
+        bytes32 indexed id,
+        address indexed seller,
+        address indexed buyer,
+        address token,
+        uint256 amount,
+        uint64 shipDeadline,
+        address arbiter,
+        uint16 feeBps
     );
 
     error FeeTooHigh(uint16 feeBps, uint16 maxFeeBps);
@@ -91,6 +136,9 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     error InvalidSignature();
     error WrongValue(uint256 sent, uint256 expected);
     error NativeTransferFailed();
+    error SellerCannotBuy();
+    error InvalidWindows();
+    error InvalidArbiter();
 
     constructor(address initialOwner) Ownable(initialOwner) EIP712("TrueAlert", "1") {
         allowedToken[NATIVE] = true;
@@ -159,6 +207,73 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         }
 
         emit InvoicePaid(terms.id, terms.seller, msg.sender, terms.token, terms.amount);
+    }
+
+    // ---------------------------------------------------------------------
+    // Protected (escrow)
+    // ---------------------------------------------------------------------
+
+    /// @notice Fund a seller-signed Protected order. Funds are locked here until
+    ///         released to the seller or refunded to the buyer. The caller
+    ///         becomes the order's buyer.
+    /// @dev Snapshots the current platform fee into the order.
+    function fund(Terms calldata terms, bytes calldata signature)
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+    {
+        _useTerms(terms, signature, Mode.Protected);
+        if (msg.sender == terms.seller) revert SellerCannotBuy();
+        if (
+            terms.shipWindow < MIN_SHIP_WINDOW || terms.shipWindow > MAX_SHIP_WINDOW
+                || terms.confirmWindow < MIN_CONFIRM_WINDOW
+                || terms.confirmWindow > MAX_CONFIRM_WINDOW
+        ) revert InvalidWindows();
+        if (
+            terms.arbiter != address(0)
+                && (terms.arbiter == terms.seller || terms.arbiter == msg.sender)
+        ) revert InvalidArbiter();
+
+        uint64 shipDeadline = uint64(block.timestamp) + terms.shipWindow;
+        uint16 orderFeeBps = feeBps;
+        _orders[terms.id] = Order({
+            seller: terms.seller,
+            shipDeadline: shipDeadline,
+            buyer: msg.sender,
+            confirmDeadline: 0,
+            token: terms.token,
+            disputeDeadline: 0,
+            arbiter: terms.arbiter,
+            confirmWindow: terms.confirmWindow,
+            feeBps: orderFeeBps,
+            status: Status.Funded,
+            extended: false,
+            amount: terms.amount
+        });
+
+        if (terms.token == NATIVE) {
+            if (msg.value != terms.amount) revert WrongValue(msg.value, terms.amount);
+        } else {
+            if (msg.value != 0) revert WrongValue(msg.value, 0);
+            IERC20(terms.token).safeTransferFrom(msg.sender, address(this), terms.amount);
+        }
+
+        emit OrderFunded(
+            terms.id,
+            terms.seller,
+            msg.sender,
+            terms.token,
+            terms.amount,
+            shipDeadline,
+            terms.arbiter,
+            orderFeeBps
+        );
+    }
+
+    /// @notice Full state of a Protected order (status None if it doesn't exist).
+    function getOrder(bytes32 id) external view returns (Order memory) {
+        return _orders[id];
     }
 
     // ---------------------------------------------------------------------

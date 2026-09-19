@@ -14,6 +14,8 @@ abstract contract TrueAlertBase is Test {
     address internal stranger = makeAddr("stranger");
 
     address internal buyer = makeAddr("buyer");
+    address internal arbiter = makeAddr("arbiter");
+    address internal treasury = makeAddr("treasury");
 
     uint256 internal sellerKey;
     address internal seller;
@@ -49,6 +51,28 @@ abstract contract TrueAlertBase is Test {
         t.amount = PRICE;
         t.expiry = uint64(block.timestamp + 15 minutes);
         t.ref = keccak256("Ankara dress, NGN 15000 @ 1373");
+    }
+
+    /// @dev "Same day / Lagos" preset: 24h to ship, 24h to confirm.
+    function _protectedTerms(bytes32 id) internal view returns (TrueAlert.Terms memory t) {
+        t = _payNowTerms(id);
+        t.mode = TrueAlert.Mode.Protected;
+        t.expiry = uint64(block.timestamp + 48 hours);
+        t.shipWindow = 24 hours;
+        t.confirmWindow = 24 hours;
+        t.arbiter = arbiter;
+    }
+
+    /// @dev Signs and funds `t` as `buyer`.
+    function _fund(TrueAlert.Terms memory t) internal {
+        bytes memory sig = _sign(sellerKey, t);
+        vm.prank(buyer);
+        if (t.token == address(0)) ta.fund{value: t.amount}(t, sig);
+        else ta.fund(t, sig);
+    }
+
+    function _order(bytes32 id) internal view returns (TrueAlert.Order memory) {
+        return ta.getOrder(id);
     }
 
     function _sign(uint256 key, TrueAlert.Terms memory t) internal view returns (bytes memory) {
