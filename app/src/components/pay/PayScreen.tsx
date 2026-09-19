@@ -7,6 +7,7 @@ import { useInvoice } from "@/hooks/useInvoice";
 import { decodeLink, type LinkPayload } from "@/lib/link";
 import { Mode } from "@/lib/terms";
 import { InvoiceCard } from "./InvoiceCard";
+import { OrderActions } from "./OrderActions";
 import { OrderPanel } from "./OrderPanel";
 import { PaidReceipt } from "./PaidReceipt";
 import { PaymentAction } from "./PaymentAction";
@@ -87,7 +88,18 @@ function Invoice({ payload }: { payload: LinkPayload }) {
           />
         </WalletGate>
       )}
-      {view.kind === "order" && <OrderPanel order={view.order} now={now} />}
+      {view.kind === "order" && (
+        <OrderPanel order={view.order} now={now}>
+          {now !== undefined && (
+            <OrderActions
+              payload={payload}
+              order={view.order}
+              now={now}
+              onChanged={() => void refetch()}
+            />
+          )}
+        </OrderPanel>
+      )}
     </>
   );
 }

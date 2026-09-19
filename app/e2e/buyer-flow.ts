@@ -8,8 +8,10 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type BrowserContext, type Page } from "playwright";
-import { createPublicClient, erc20Abi, http, type Address } from "viem";
+import { createPublicClient, createWalletClient, erc20Abi, http, type Address, type Hex } from "viem";
 import { foundry } from "viem/chains";
+import { trueAlertAbi } from "../src/lib/abi/trueAlert";
+import { decodeLink } from "../src/lib/link";
 import { injectTestWallet } from "./testWallet";
 
 const RPC = "http://127.0.0.1:8545";
@@ -19,6 +21,43 @@ const shots = join(__dirname, "screenshots");
 mkdirSync(shots, { recursive: true });
 
 const client = createPublicClient({ chain: foundry, transport: http(RPC) });
+// Anvil accounts are unlocked, so the node signs for the seller.
+const sellerWallet = createWalletClient({ account: SELLER, chain: foundry, transport: http(RPC) });
+
+function orderId(url: string): Hex {
+  const result = decodeLink(new URL(url).searchParams.get("d")!);
+  if (!result.ok) throw new Error(result.error);
+  return result.payload.terms.id;
+}
+
+async function sellerDoes(contract: Address, functionName: "markShipped" | "claim" | "cancel", id: Hex) {
+  const hash = await sellerWallet.writeContract({ address: contract, abi: trueAlertAbi, functionName, args: [id] });
+  await client.waitForTransactionReceipt({ hash });
+}
+
+/** Fast-forward the chain clock and mine a block. */
+async function warp(seconds: number) {
+  await client.request({ method: "evm_increaseTime" as never, params: [seconds] as never });
+  await client.request({ method: "evm_mine" as never, params: [] as never });
+}
+
+async function fundProtected(page: Page, ...linkArgs: string[]) {
+  const { url } = devLink("--protected", ...linkArgs);
+  await page.goto(url);
+  await page.getByText("Signed by the seller").waitFor();
+  await connect(page);
+  const allow = page.getByRole("button", { name: /^Allow / });
+  const pay = page.getByRole("button", { name: /^Pay safely/ });
+  await allow.or(pay).first().waitFor();
+  if (await allow.isVisible()) await allow.click();
+  await pay.click();
+  await page.getByText("Paid into escrow").first().waitFor();
+  return { url, id: orderId(url) };
+}
+
+async function orderStatus(contract: Address, id: Hex) {
+  return (await client.readContract({ address: contract, abi: trueAlertAbi, functionName: "getOrder", args: [id] })).status;
+}
 
 function devLink(...args: string[]): { url: string } {
   const out = execFileSync("pnpm", ["-s", "dev-link", ...args], { encoding: "utf8" });
@@ -103,6 +142,19 @@ async function main() {
 
       const locked = (await client.getBalance({ address: trueAlert })) - escrowBefore;
       if (locked <= 0n) throw new Error("escrow should hold the ETN");
+    });
+
+    await scenario(context, "Protected: seller ships, buyer confirms (two taps), seller paid", async (page) => {
+      const { id } = await fundProtected(page, "--item", "Ankara dress");
+      const sellerBefore = await usdcBalance(SELLER);
+      await sellerDoes(trueAlert, "markShipped", id);
+      await page.getByText("Shipped · confirm when it arrives").waitFor();
+      await page.getByRole("button", { name: "I received it ✓" }).click();
+      await page.getByRole("button", { name: /^Tap again to release ₦15,000/ }).click();
+      await page.getByText("Completed ✓").waitFor();
+      await page.screenshot({ path: join(shots, "protected-released.png") });
+      if ((await orderStatus(trueAlert, id)) !== 4) throw new Error("order should be Released");
+      if ((await usdcBalance(SELLER)) <= sellerBefore) throw new Error("seller should be paid");
     });
 
     await scenario(context, "Link reserved for another wallet can't be paid", async (page) => {
