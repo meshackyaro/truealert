@@ -3,7 +3,9 @@
 import { Notice } from "@/components/Shell";
 import { useInvoice } from "@/hooks/useInvoice";
 import { decodeLink, type LinkPayload } from "@/lib/link";
+import { BalanceLine } from "./BalanceLine";
 import { InvoiceCard } from "./InvoiceCard";
+import { WalletGate } from "./WalletGate";
 import { ViewNotice } from "./ViewNotice";
 
 export function PayScreen({ encoded }: { encoded: string }) {
@@ -63,6 +65,11 @@ function Invoice({ payload }: { payload: LinkPayload }) {
         <p className="px-1 text-sm text-neutral-500">Checking the blockchain…</p>
       )}
       <ViewNotice view={view} />
+      {view.kind === "payable" && (
+        <WalletGate prompt="Connect wallet to pay">
+          <BalanceLine token={token} needed={payload.terms.amount} />
+        </WalletGate>
+      )}
     </>
   );
 }
