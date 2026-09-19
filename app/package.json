@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync-abi": "node scripts/sync-abi.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "2.2.11",
