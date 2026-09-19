@@ -6,7 +6,7 @@ import { findToken } from "@/config/tokens";
 import { trueAlertAbi } from "@/lib/abi/trueAlert";
 import { deriveInvoiceView, type ChainReads } from "@/lib/invoice";
 import type { LinkPayload } from "@/lib/link";
-import { useNow } from "./useNow";
+import { useChainNow } from "./useChainNow";
 
 /** Live on-chain state of a payment link, polled every few seconds. */
 export function useInvoice(payload: LinkPayload) {
@@ -14,7 +14,7 @@ export function useInvoice(payload: LinkPayload) {
   const contract = env.trueAlertAddress;
   const sameDeployment =
     payload.chainId === env.chain.id && !!contract && payload.contract === contract;
-  const now = useNow();
+  const now = useChainNow();
 
   const base = { address: payload.contract, abi: trueAlertAbi } as const;
   const { data, isError, refetch } = useReadContracts({
