@@ -323,6 +323,18 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         _refund(id, o);
     }
 
+    /// @notice Seller refunds the buyer in full at any point before release,
+    ///         e.g. out of stock or an unexpected payer on an open link.
+    ///         Not possible while a dispute is open; the arbiter decides then.
+    function cancel(bytes32 id) external nonReentrant {
+        Order storage o = _orders[id];
+        if (msg.sender != o.seller) revert NotSeller();
+        if (o.status != Status.Funded && o.status != Status.Shipped) {
+            revert InvalidStatus(o.status);
+        }
+        _refund(id, o);
+    }
+
     /// @notice Full state of a Protected order (status None if it doesn't exist).
     function getOrder(bytes32 id) external view returns (Order memory) {
         return _orders[id];
