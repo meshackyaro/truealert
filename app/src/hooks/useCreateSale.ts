@@ -36,8 +36,13 @@ export function useCreateSale() {
     setBusy(true);
     setError(undefined);
     try {
-      const fromBlock = await publicClient.getBlockNumber();
-      const { terms, details } = buildSale(input, Math.floor(Date.now() / 1000));
+      // Expiry is judged by block time on-chain. Base it on the later of the
+      // device clock and the latest block, so a phone with a slow clock can't
+      // create links that are already expired.
+      const block = await publicClient.getBlock();
+      const fromBlock = block.number;
+      const now = Math.max(Math.floor(Date.now() / 1000), Number(block.timestamp));
+      const { terms, details } = buildSale(input, now);
       const signature = await signTypedDataAsync({
         domain: termsDomain(env.chain.id, contract),
         types: termsTypes,
