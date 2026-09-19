@@ -9,6 +9,7 @@
     "dev-link": "pnpm --dir app dev-link",
     "build": "pnpm --dir app build",
     "test": "pnpm --dir app test && cd contracts && forge test",
-    "e2e": "pnpm --dir app e2e"
+    "e2e": "pnpm --dir app e2e",
+    "testnet-smoke": "pnpm --dir app testnet-smoke"
   }
 }

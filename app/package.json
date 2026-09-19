@@ -11,7 +11,8 @@
     "test": "vitest run",
     "local-chain": "scripts/local-chain.sh",
     "dev-link": "tsx scripts/dev-link.ts",
-    "e2e": "tsx e2e/buyer-flow.ts"
+    "e2e": "tsx e2e/buyer-flow.ts",
+    "testnet-smoke": "tsx scripts/testnet-smoke.ts"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "2.2.11",
