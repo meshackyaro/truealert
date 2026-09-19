@@ -71,7 +71,10 @@ async function main() {
     rate: { ngnPerUsd: NGN_PER_USD, source: "quidax", at: new Date().toISOString() },
   };
 
-  const now = BigInt((await client.getBlock()).timestamp);
+  // Anvil's latest block can be minutes old; the next block uses wall-clock time.
+  const blockTime = (await client.getBlock()).timestamp;
+  const wallClock = BigInt(Math.floor(Date.now() / 1000));
+  const now = blockTime > wallClock ? blockTime : wallClock;
   const expiry = flag("expired") ? now - 1n : now + (protectedMode ? 48n * 3600n : 15n * 60n);
 
   const terms: Terms = {
