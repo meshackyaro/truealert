@@ -1,20 +1,28 @@
 "use client";
 
 import { QRCodeSVG } from "qrcode.react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Shell";
 import { findToken } from "@/config/tokens";
+import { useChainNow } from "@/hooks/useChainNow";
 import type { CreatedSale } from "@/hooks/useCreateSale";
-import { useNow } from "@/hooks/useNow";
+import { useSaleStatus } from "@/hooks/useSaleStatus";
 import { formatNaira, formatTimeLeft, formatTokenAmount } from "@/lib/format";
 import { Mode } from "@/lib/terms";
+import { SaleStatusBanner } from "./SaleStatusBanner";
 
-/** After signing: QR for in-person, share options for DM links. */
-export function SaleCreated({ sale, onNew, status }: { sale: CreatedSale; onNew: () => void; status?: ReactNode }) {
+/**
+ * After signing: QR for in-person, share options for DM links, and the live
+ * payment status. Once paid, the QR and share options go away so nobody pays
+ * twice.
+ */
+export function SaleCreated({ sale, onNew }: { sale: CreatedSale; onNew: () => void }) {
   const { terms, details } = sale.payload;
   const token = findToken(terms.token);
-  const now = useNow();
+  const now = useChainNow();
+  const status = useSaleStatus(sale);
+  const settled = status.kind !== "waiting";
   const isProtected = terms.mode === Mode.Protected;
   const amount = token ? `${formatTokenAmount(terms.amount, token.decimals)} ${token.symbol}` : "";
 
@@ -25,7 +33,7 @@ export function SaleCreated({ sale, onNew, status }: { sale: CreatedSale; onNew:
         <p className="text-4xl font-bold tracking-tight">{formatNaira(details.priceNgn)}</p>
         <p className="text-sm text-neutral-600">{amount}</p>
 
-        {!isProtected && (
+        {!isProtected && !settled && (
           <>
             <div className="mx-auto mt-4 w-full max-w-72 rounded-2xl bg-white p-3 ring-1 ring-neutral-200">
               <QRCodeSVG value={sale.url} size={512} level="L" className="h-auto w-full" title="Payment QR code" />
@@ -34,15 +42,18 @@ export function SaleCreated({ sale, onNew, status }: { sale: CreatedSale; onNew:
           </>
         )}
 
-        {now !== undefined && (
+        {now !== undefined && !settled && (
           <p className="mt-2 text-xs text-neutral-500">
             {now > Number(terms.expiry) ? "This link has expired" : `Price locked · ${formatTimeLeft(terms.expiry, now)}`}
           </p>
         )}
-        {status && <div className="mt-4">{status}</div>}
+        <div className="mt-4">
+          <SaleStatusBanner sale={sale} status={status} />
+        </div>
       </Card>
 
-      {isProtected ? <ShareLink sale={sale} amount={amount} /> : <CopyLink url={sale.url} label="Copy payment link" />}
+      {!settled &&
+        (isProtected ? <ShareLink sale={sale} amount={amount} /> : <CopyLink url={sale.url} label="Copy payment link" />)}
 
       <Button variant="secondary" onClick={onNew}>
         New sale
