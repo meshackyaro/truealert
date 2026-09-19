@@ -57,10 +57,25 @@ export async function setEtnBalance(account: Address, weiHex: string) {
   await client.request({ method: "anvil_setBalance" as never, params: [account, weiHex] as never });
 }
 
-/** Clicks the page's connect button, then the injected test wallet. */
+/**
+ * Connects the injected test wallet via the page's connect button, unless the
+ * wallet already reconnected by itself (it remembers approval, like MetaMask).
+ */
 export async function connect(page: Page, prompt: string | RegExp = /^Connect /) {
-  await page.getByRole("button", { name: prompt }).click();
+  const button = page.getByRole("button", { name: prompt });
+  const connected = page.getByRole("button", { name: "Disconnect" });
+  // The server-rendered button shows first and may vanish when the wallet
+  // reconnects on its own, so wait until the page settles either way.
+  const deadline = Date.now() + 30_000;
+  for (;;) {
+    if (await connected.isVisible()) return;
+    if ((await button.isVisible()) && (await button.isEnabled())) break;
+    if (Date.now() > deadline) throw new Error("page never offered a connect button nor connected");
+    await page.waitForTimeout(250);
+  }
+  await button.click();
   await page.getByRole("button", { name: "Browser Wallet" }).click();
+  await connected.waitFor();
 }
 
 /** Runs one scenario in a fresh page with the test wallet; screenshots on failure. */

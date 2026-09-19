@@ -14,7 +14,10 @@ export async function injectTestWallet(page: Page, opts: { account: string; rpcU
   await page.addInitScript(`(() => {
     const { account, rpcUrl, chainId } = ${config};
     let id = 0;
-    let approved = false; // like real wallets: no accounts until the user approves
+    // Like real wallets: no accounts until the user approves this site, and the
+    // approval is remembered across page loads.
+    const approvalKey = "testWallet.approved:" + account;
+    let approved = localStorage.getItem(approvalKey) === "1";
     const listeners = {};
     async function rpc(method, params) {
       const res = await fetch(rpcUrl, {
@@ -37,6 +40,7 @@ export async function injectTestWallet(page: Page, opts: { account: string; rpcU
         switch (method) {
           case "eth_requestAccounts":
             approved = true;
+            localStorage.setItem(approvalKey, "1");
             return [account];
           case "eth_accounts":
             return approved ? [account] : [];

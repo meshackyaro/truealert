@@ -4,7 +4,19 @@
 // Run:                      pnpm e2e:seller
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
-import { APP, BUYER, connect, pageAs, scenario, SELLER, setEtnBalance, shots, usdcBalance } from "./helpers";
+import {
+  APP,
+  BUYER,
+  connect,
+  orderId,
+  orderStatus,
+  pageAs,
+  scenario,
+  SELLER,
+  setEtnBalance,
+  shots,
+  usdcBalance,
+} from "./helpers";
 
 /** Creates a sale on /sell. Returns the link for Protected sales (pay-now shows a QR). */
 async function createSale(page: Page, opts: { protectedMode?: boolean; item: string; price: string }): Promise<string | undefined> {
@@ -85,6 +97,28 @@ async function main() {
         await buyer.close();
         await seller.getByText("Buyer paid ✓").waitFor();
         await seller.screenshot({ path: join(shots, "seller-funded.png"), fullPage: true });
+      },
+      SELLER,
+    );
+
+    await scenario(
+      context,
+      "Protected: seller opens the order and marks it shipped",
+      async (seller) => {
+        const url = (await createSale(seller, { protectedMode: true, item: "Sneakers", price: "15000" }))!;
+        const buyer = await pageAs(browser, BUYER);
+        await buyerPays(buyer, url, /^Pay safely ₦15,000/, (p) => p.getByText("Paid into escrow").first().waitFor());
+        await seller.getByRole("link", { name: "Manage this order" }).click();
+        await seller.getByText("Buyer paid ✓ · ship the order").waitFor();
+        await seller.getByRole("button", { name: "Mark as shipped" }).click();
+        await seller.getByRole("button", { name: "Tap again to confirm you've sent it" }).click();
+        await seller.getByText("Shipped · waiting for the buyer").waitFor();
+        await seller.screenshot({ path: join(shots, "seller-shipped.png"), fullPage: true });
+        if ((await orderStatus(orderId(url))) !== 2) throw new Error("order should be Shipped");
+        // The buyer's page now asks them to confirm.
+        await buyer.reload();
+        await buyer.getByText("Shipped · confirm when it arrives").waitFor();
+        await buyer.close();
       },
       SELLER,
     );
