@@ -133,6 +133,9 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     event OrderRefunded(bytes32 indexed id, uint256 amount);
     event OrderExtended(bytes32 indexed id, uint64 confirmDeadline);
     event OrderDisputed(bytes32 indexed id, address indexed arbiter, uint64 disputeDeadline);
+    event OrderResolved(
+        bytes32 indexed id, uint256 sellerAmount, uint256 buyerAmount, uint256 fee, bool timedOut
+    );
 
     error FeeTooHigh(uint16 feeBps, uint16 maxFeeBps);
     error ZeroFeeRecipient();
@@ -156,6 +159,8 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     error AlreadyExtended();
     error InvalidExtension();
     error NoArbiter();
+    error NotArbiter();
+    error InvalidShare();
 
     constructor(address initialOwner) Ownable(initialOwner) EIP712("TrueAlert", "1") {
         allowedToken[NATIVE] = true;
@@ -374,6 +379,26 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         o.disputeDeadline = disputeDeadline;
         o.status = Status.Disputed;
         emit OrderDisputed(id, o.arbiter, disputeDeadline);
+    }
+
+    /// @notice Arbiter rules on a disputed order: `sellerShare` goes to the
+    ///         seller (less the fee), the rest back to the buyer. Funds can
+    ///         only ever go to this order's buyer and seller.
+    function resolve(bytes32 id, uint256 sellerShare) external nonReentrant {
+        Order storage o = _orders[id];
+        if (msg.sender != o.arbiter || o.arbiter == address(0)) revert NotArbiter();
+        if (o.status != Status.Disputed) revert InvalidStatus(o.status);
+        if (block.timestamp > o.disputeDeadline) revert DeadlinePassed();
+        if (sellerShare > o.amount) revert InvalidShare();
+
+        o.status = Status.Resolved;
+        uint256 fee = _feeOn(sellerShare, o.feeBps);
+        uint256 sellerAmount = sellerShare - fee;
+        uint256 buyerAmount = o.amount - sellerShare;
+        _payout(o.token, o.seller, sellerAmount);
+        _payout(o.token, feeRecipient, fee);
+        _payout(o.token, o.buyer, buyerAmount);
+        emit OrderResolved(id, sellerAmount, buyerAmount, fee, false);
     }
 
     /// @notice Full state of a Protected order (status None if it doesn't exist).
