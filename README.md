@@ -13,10 +13,18 @@ Early development — MVP targets the Electroneum testnet (chain ID 5201420).
 
 ## Repository layout
 
-- `contracts/` — Solidity smart contracts (Foundry)
-- `app/` — Next.js web app and API routes
+- [`contracts/`](contracts/README.md): Solidity smart contracts (Foundry). Setup, tests and deployment are documented there.
+- [`app/`](app/README.md): the Next.js web app. Setup, local chain, tests and payment links are documented there.
 
-Setup instructions will be added as each part lands.
+## Quick start (local, no testnet needed)
+
+```bash
+git clone --recurse-submodules https://github.com/meshackyaro/truealert.git
+cd truealert/app && pnpm install
+pnpm local-chain        # terminal 1: local chain + contracts
+pnpm dev                # terminal 2: http://localhost:3000
+pnpm dev-link           # prints a signed test payment link
+```
 
 ## License
 
