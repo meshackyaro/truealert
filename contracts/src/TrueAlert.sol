@@ -126,6 +126,7 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     );
     event OrderShipped(bytes32 indexed id, uint64 confirmDeadline);
     event OrderReleased(bytes32 indexed id, uint256 sellerAmount, uint256 fee);
+    event OrderRefunded(bytes32 indexed id, uint256 amount);
 
     error FeeTooHigh(uint16 feeBps, uint16 maxFeeBps);
     error ZeroFeeRecipient();
@@ -312,6 +313,16 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         _release(id, o);
     }
 
+    /// @notice Buyer takes their money back when the seller never shipped
+    ///         before the ship deadline. Always a full refund, no fee.
+    function reclaim(bytes32 id) external nonReentrant {
+        Order storage o = _orders[id];
+        if (msg.sender != o.buyer) revert NotBuyer();
+        if (o.status != Status.Funded) revert InvalidStatus(o.status);
+        if (block.timestamp <= o.shipDeadline) revert DeadlineNotReached();
+        _refund(id, o);
+    }
+
     /// @notice Full state of a Protected order (status None if it doesn't exist).
     function getOrder(bytes32 id) external view returns (Order memory) {
         return _orders[id];
@@ -341,6 +352,13 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         _payout(o.token, o.seller, sellerAmount);
         _payout(o.token, feeRecipient, fee);
         emit OrderReleased(id, sellerAmount, fee);
+    }
+
+    /// @dev Returns the whole order to the buyer. Refunds never pay a fee.
+    function _refund(bytes32 id, Order storage o) internal {
+        o.status = Status.Refunded;
+        _payout(o.token, o.buyer, o.amount);
+        emit OrderRefunded(id, o.amount);
     }
 
     /// @dev Fee is waived if no recipient is set, so a later `setFee(0, 0)`
