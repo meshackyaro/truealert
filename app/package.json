@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "sync-abi": "node scripts/sync-abi.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "local-chain": "scripts/local-chain.sh",
+    "dev-link": "tsx scripts/dev-link.ts"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "2.2.11",
@@ -27,6 +29,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "vitest": "^5.0.1"
   },
