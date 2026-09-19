@@ -13,10 +13,13 @@ abstract contract TrueAlertBase is Test {
     address internal owner = makeAddr("owner");
     address internal stranger = makeAddr("stranger");
 
+    address internal buyer = makeAddr("buyer");
+
     uint256 internal sellerKey;
     address internal seller;
 
     uint256 internal constant PRICE = 10_920_000; // 10.92 USDC
+    uint256 internal constant ETN_PRICE = 9_600 ether; // ~NGN 15,000 in ETN
 
     function setUp() public virtual {
         vm.warp(1_790_000_000); // realistic "now" (Sep 2026)
@@ -25,6 +28,17 @@ abstract contract TrueAlertBase is Test {
         usdc = new MockUSDC();
         vm.prank(owner);
         ta.setTokenAllowed(address(usdc), true);
+
+        usdc.mint(buyer, 1_000e6);
+        vm.prank(buyer);
+        usdc.approve(address(ta), type(uint256).max);
+        vm.deal(buyer, 100_000 ether);
+    }
+
+    function _nativePayNowTerms(bytes32 id) internal view returns (TrueAlert.Terms memory t) {
+        t = _payNowTerms(id);
+        t.token = address(0);
+        t.amount = ETN_PRICE;
     }
 
     function _payNowTerms(bytes32 id) internal view returns (TrueAlert.Terms memory t) {
