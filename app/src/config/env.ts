@@ -25,6 +25,11 @@ export const env = {
     process.env.NEXT_PUBLIC_TRUEALERT_ADDRESS,
   ),
   usdcAddress: optionalAddress("NEXT_PUBLIC_USDC_ADDRESS", process.env.NEXT_PUBLIC_USDC_ADDRESS),
+  /** The project-run "TrueAlert Resolution" arbiter wallet. */
+  arbiterAddress: optionalAddress(
+    "NEXT_PUBLIC_ARBITER_ADDRESS",
+    process.env.NEXT_PUBLIC_ARBITER_ADDRESS,
+  ),
   /** Optional. Without it only browser-injected wallets are offered. */
   walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || undefined,
 } as const;
