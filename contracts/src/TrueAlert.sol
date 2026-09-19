@@ -145,6 +145,7 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     error NotBuyer();
     error InvalidStatus(Status current);
     error DeadlinePassed();
+    error DeadlineNotReached();
 
     constructor(address initialOwner) Ownable(initialOwner) EIP712("TrueAlert", "1") {
         allowedToken[NATIVE] = true;
@@ -298,6 +299,16 @@ contract TrueAlert is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
         if (o.status != Status.Funded && o.status != Status.Shipped) {
             revert InvalidStatus(o.status);
         }
+        _release(id, o);
+    }
+
+    /// @notice Seller collects after the buyer stayed silent past the confirm
+    ///         deadline. Not possible while a dispute is open.
+    function claim(bytes32 id) external nonReentrant {
+        Order storage o = _orders[id];
+        if (msg.sender != o.seller) revert NotSeller();
+        if (o.status != Status.Shipped) revert InvalidStatus(o.status);
+        if (block.timestamp <= o.confirmDeadline) revert DeadlineNotReached();
         _release(id, o);
     }
 
