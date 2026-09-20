@@ -46,6 +46,22 @@ export class RateUnavailableError extends Error {
   }
 }
 
+/**
+ * Fixed rate for local development and tests: set RATE_FIXED_NGN_PER_USD (and
+ * optionally RATE_FIXED_ETN_USD) to work offline and get identical quotes on
+ * every run. Never set these in production.
+ */
+function fixedQuote(now: () => number): RateQuote | undefined {
+  const ngnPerUsd = process.env.RATE_FIXED_NGN_PER_USD;
+  if (!ngnPerUsd) return undefined;
+  return {
+    ngnPerUsd,
+    source: "quidax",
+    at: new Date(now()).toISOString(),
+    etnUsd: process.env.RATE_FIXED_ETN_USD ?? null,
+  };
+}
+
 export function createRateService(deps: RateServiceDeps) {
   const staleNgnMs = deps.staleNgnMs ?? 5 * 60_000;
   const staleEtnMs = deps.staleEtnMs ?? 10 * 60_000;
@@ -125,6 +141,8 @@ export function createRateService(deps: RateServiceDeps) {
   return {
     /** The current quote, from cache when fresh. Concurrent callers share one fetch. */
     async getQuote(): Promise<RateQuote> {
+      const fixed = fixedQuote(deps.now);
+      if (fixed) return fixed;
       if (cached && cached.expires > deps.now()) return cached.quote;
       inflight ??= fetchQuote()
         .then((quote) => {

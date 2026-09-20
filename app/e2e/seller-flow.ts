@@ -29,7 +29,7 @@ async function createSale(page: Page, opts: { protectedMode?: boolean; item: str
   if (opts.protectedMode) await page.getByRole("radio", { name: /Protected/ }).click();
   await page.getByPlaceholder("e.g. Ankara dress").fill(opts.item);
   await page.getByPlaceholder("15000").fill(opts.price);
-  await page.getByText("Buyer pays").waitFor();
+  await page.getByText(/Buyer pays \d/).waitFor();
   await page.getByRole("button", { name: opts.protectedMode ? "Create payment link" : "Create payment QR" }).click();
   if (opts.protectedMode) {
     await page.getByText("Send this link to your buyer").waitFor();
@@ -196,6 +196,43 @@ async function main() {
         // The back arrow returns to the new-sale form.
         await seller.getByRole("button", { name: "Back to new sale" }).click();
         await seller.getByText("What are you selling?").waitFor();
+      },
+      SELLER,
+    );
+
+    await scenario(
+      context,
+      "Multi-item sale totals up and shows the buyer a breakdown",
+      async (seller) => {
+        await seller.goto(`${APP}/sell`);
+        await connect(seller, "Connect your wallet to sell");
+        await seller.getByRole("radio", { name: /Protected/ }).click();
+        await seller.getByPlaceholder("e.g. Ankara dress").fill("Ankara dress");
+        await seller.getByLabel("Quantity for item 1").fill("2");
+        await seller.getByLabel("Price for item 1").fill("7500");
+        await seller.getByRole("button", { name: "+ Add item" }).click();
+        await seller.getByPlaceholder("Another item").fill("Gele headwrap");
+        await seller.getByLabel("Price for item 2").fill("2500.50");
+        await seller.getByText("Total ₦17,500.50").waitFor();
+        await seller.getByRole("button", { name: "Create payment link" }).click();
+        await seller.getByText("Send this link to your buyer").waitFor();
+        const href = await seller.getByRole("link", { name: "Share on WhatsApp" }).getAttribute("href");
+        const url = decodeURIComponent(href!.split("text=")[1]).split("\n").at(-1)!;
+
+        const buyer = await pageAs(browser, BUYER);
+        await buyer.goto(url);
+        await buyer.getByText("Signed by the seller").waitFor();
+        await buyer.getByText("Ankara dress +1 more").waitFor(); // summary
+        await buyer.getByText("2 × Ankara dress").waitFor(); // breakdown
+        await buyer.getByText("₦15,000").waitFor(); // line total
+        await buyer.getByText("₦2,500.50").waitFor();
+        await buyer.screenshot({ path: join(shots, "buyer-breakdown.png"), fullPage: true });
+        if (linkTerms(url).amount !== 12_750_000n) {
+          // ₦17,500.50 at the live rate; just check it's a sane USDC amount
+          const amount = linkTerms(url).amount;
+          if (amount < 11_000_000n || amount > 15_000_000n) throw new Error(`unexpected amount ${amount}`);
+        }
+        await buyer.close();
       },
       SELLER,
     );
