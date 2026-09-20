@@ -17,7 +17,7 @@ import { SaleStatusBanner } from "./SaleStatusBanner";
  * payment status. Once paid, the QR and share options go away so nobody pays
  * twice.
  */
-export function SaleCreated({ sale, onNew }: { sale: CreatedSale; onNew: () => void }) {
+export function SaleCreated({ sale, onBack }: { sale: CreatedSale; onBack: () => void }) {
   const { terms, details } = sale.payload;
   const token = findToken(terms.token);
   const now = useChainNow();
@@ -28,6 +28,24 @@ export function SaleCreated({ sale, onNew }: { sale: CreatedSale; onNew: () => v
 
   return (
     <>
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label="Back to new sale"
+        className="-ml-2 flex min-h-11 w-fit items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-muted transition-colors hover:text-fg"
+      >
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden className="size-5">
+          <path
+            d="M12 15l-5-5 5-5"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        Back
+      </button>
+
       <Card className="text-center">
         <p className="text-sm text-muted">{details.item}</p>
         <p className="text-4xl font-bold tracking-tight">{formatNaira(details.priceNgn)}</p>
@@ -64,7 +82,7 @@ export function SaleCreated({ sale, onNew }: { sale: CreatedSale; onNew: () => v
       {!settled &&
         (isProtected ? <ShareLink sale={sale} amount={amount} /> : <CopyLink url={sale.url} label="Copy payment link" />)}
 
-      <Button variant="secondary" onClick={onNew}>
+      <Button variant="secondary" onClick={onBack}>
         New sale
       </Button>
     </>

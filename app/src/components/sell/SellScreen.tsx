@@ -46,7 +46,7 @@ function Seller() {
   if (!address) return null;
 
   if (sale) {
-    return <SaleCreated sale={sale} onNew={() => setSale(undefined)} />;
+    return <SaleCreated sale={sale} onBack={() => setSale(undefined)} />;
   }
 
   return (

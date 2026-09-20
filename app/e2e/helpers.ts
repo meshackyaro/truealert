@@ -30,10 +30,19 @@ export const usdc = () => envAddress("NEXT_PUBLIC_USDC_ADDRESS");
 export const usdcBalance = (owner: Address) =>
   client.readContract({ address: usdc(), abi: erc20Abi, functionName: "balanceOf", args: [owner] });
 
-export function orderId(url: string): Hex {
+export function linkTerms(url: string) {
   const result = decodeLink(new URL(url).searchParams.get("d")!);
   if (!result.ok) throw new Error(result.error);
-  return result.payload.terms.id;
+  return result.payload.terms;
+}
+
+export function orderId(url: string): Hex {
+  return linkTerms(url).id;
+}
+
+/** Full on-chain order (amounts are quoted at the live rate, so read them). */
+export async function order(id: Hex) {
+  return client.readContract({ address: trueAlert(), abi: trueAlertAbi, functionName: "getOrder", args: [id] });
 }
 
 export async function orderStatus(id: Hex) {

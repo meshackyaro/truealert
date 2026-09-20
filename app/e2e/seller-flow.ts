@@ -8,7 +8,9 @@ import {
   APP,
   BUYER,
   connect,
+  linkTerms,
   orderId,
+  order,
   orderStatus,
   pageAs,
   scenario,
@@ -75,6 +77,7 @@ async function main() {
         await createSale(seller, { item: "Phone credit", price: "2500" });
         await seller.getByRole("button", { name: "Copy payment link" }).click();
         const url = await seller.evaluate(() => navigator.clipboard.readText());
+        const amount = linkTerms(url).amount; // quoted at the live rate
         const sellerBefore = await usdcBalance(SELLER);
 
         const buyer = await pageAs(browser, BUYER);
@@ -84,7 +87,7 @@ async function main() {
         await seller.getByText("PAID ✓").waitFor();
         await seller.getByText(/from 0x3C44…93BC/).waitFor();
         await seller.screenshot({ path: join(shots, "seller-paid.png"), fullPage: true });
-        if ((await usdcBalance(SELLER)) - sellerBefore !== 1_830_000n) throw new Error("seller should receive 1.83 USDC");
+        if ((await usdcBalance(SELLER)) - sellerBefore !== amount) throw new Error("seller should receive the invoice amount");
       },
       SELLER,
     );
@@ -134,6 +137,7 @@ async function main() {
         await buyerPays(buyer, url, /^Pay safely ₦15,000/, (p) => p.getByText("Paid into escrow").first().waitFor());
         await buyer.close();
         const id = orderId(url);
+        const amount = (await order(id)).amount; // quoted at the live rate, so read it
         await sellerDoes("markShipped", id);
         await warp(24 * 3600 + 5);
         const before = await usdcBalance(SELLER);
@@ -143,7 +147,7 @@ async function main() {
         await seller.getByRole("button", { name: "Tap again to collect ₦15,000" }).click();
         await seller.getByText("Completed ✓").waitFor();
         if ((await orderStatus(id)) !== 4) throw new Error("order should be Released");
-        if ((await usdcBalance(SELLER)) - before !== 10_930_000n) throw new Error("seller should collect 10.93 USDC");
+        if ((await usdcBalance(SELLER)) - before !== amount) throw new Error("seller should collect the order amount");
       },
       SELLER,
     );
@@ -156,6 +160,7 @@ async function main() {
         const buyer = await pageAs(browser, BUYER);
         await buyerPays(buyer, url, /^Pay safely ₦15,000/, (p) => p.getByText("Paid into escrow").first().waitFor());
         await buyer.close();
+        const amount = (await order(orderId(url))).amount;
         const buyerBefore = await usdcBalance(BUYER);
         await seller.getByRole("link", { name: "Manage this order" }).click();
         await seller.getByText("Can't fulfil this order?").click();
@@ -163,7 +168,7 @@ async function main() {
         await seller.getByRole("button", { name: "Tap again to refund ₦15,000 to the buyer" }).click();
         await seller.getByRole("heading", { name: "Refunded" }).waitFor();
         if ((await orderStatus(orderId(url))) !== 5) throw new Error("order should be Refunded");
-        if ((await usdcBalance(BUYER)) - buyerBefore !== 10_930_000n) throw new Error("buyer should get 10.93 USDC back");
+        if ((await usdcBalance(BUYER)) - buyerBefore !== amount) throw new Error("buyer should get the full amount back");
       },
       SELLER,
     );
@@ -175,7 +180,7 @@ async function main() {
         await createSale(seller, { item: "Recharge card", price: "500" });
         await seller.getByRole("button", { name: "Copy payment link" }).click();
         const url = await seller.evaluate(() => navigator.clipboard.readText());
-        await seller.getByRole("button", { name: "New sale" }).click();
+        await seller.getByRole("button", { name: "New sale", exact: true }).click();
 
         const row = seller.getByRole("button", { name: /Recharge card/ });
         await row.getByText("Waiting for payment").waitFor();
@@ -188,6 +193,9 @@ async function main() {
         await seller.screenshot({ path: join(shots, "seller-recent-sales.png"), fullPage: true });
         await row.click();
         await seller.getByText("PAID ✓").waitFor(); // reopened, with its live status
+        // The back arrow returns to the new-sale form.
+        await seller.getByRole("button", { name: "Back to new sale" }).click();
+        await seller.getByText("What are you selling?").waitFor();
       },
       SELLER,
     );
