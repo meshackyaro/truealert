@@ -108,6 +108,29 @@
     font-family: var(--font-sans), system-ui, sans-serif;
   }
 
+  /*
+   * Tailwind's reset leaves buttons with the default arrow cursor; show a
+   * pointer on anything clickable, and a "not-allowed" cursor when it's off.
+   */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="radio"],
+  a[href],
+  label:has(input[type="checkbox"]:not(:disabled)),
+  label:has(input[type="radio"]:not(:disabled)),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  select:disabled {
+    cursor: not-allowed;
+  }
+
   /* Visible, consistent keyboard focus everywhere. */
   :focus-visible {
     outline: 2px solid var(--color-brand);
