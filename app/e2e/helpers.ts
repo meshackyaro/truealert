@@ -67,9 +67,12 @@ export async function connect(page: Page, prompt: string | RegExp = /^Connect /)
   // The server-rendered button shows first and may vanish when the wallet
   // reconnects on its own, so wait until the page settles either way.
   const deadline = Date.now() + 30_000;
+  // Elements can detach mid-check while the page settles, so treat any
+  // locator error as "not in that state yet" and look again.
+  const is = (check: Promise<boolean>) => check.catch(() => false);
   for (;;) {
-    if (await connected.isVisible()) return;
-    if ((await button.isVisible()) && (await button.isEnabled())) break;
+    if (await is(connected.isVisible())) return;
+    if ((await is(button.isVisible())) && (await is(button.isEnabled()))) break;
     if (Date.now() > deadline) throw new Error("page never offered a connect button nor connected");
     await page.waitForTimeout(250);
   }
