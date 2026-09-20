@@ -1,7 +1,15 @@
 import { zeroAddress, type Address } from "viem";
 import { describe, expect, it } from "vitest";
 import { ETN, type Token } from "@/config/tokens";
-import { buildSale, quoteAmount, validateSale, type SaleInput } from "./sale";
+import {
+  buildSale,
+  parseLineItems,
+  quoteAmount,
+  saleSummary,
+  saleTotalNgn,
+  validateSale,
+  type SaleInput,
+} from "./sale";
 import { hashOrderDetails, Mode } from "./terms";
 
 const USDC: Token = {
@@ -49,8 +57,7 @@ const base: SaleInput = {
   mode: Mode.Protected,
   seller: SELLER,
   token: USDC,
-  priceNgn: "15000",
-  item: "  Ankara dress  ",
+  items: [{ name: "  Ankara dress  ", qty: "1", unitNgn: "15000" }],
   sellerName: "Chioma's Closet",
   rate,
   delivery: { preset: "interstate" },
@@ -62,10 +69,12 @@ describe("validateSale", () => {
     expect(validateSale(base)).toEqual({});
   });
 
-  it("rejects bad prices and empty items", () => {
-    expect(validateSale({ ...base, priceNgn: "15,000" }).priceNgn).toBeDefined();
-    expect(validateSale({ ...base, priceNgn: "0" }).priceNgn).toBeDefined();
-    expect(validateSale({ ...base, item: "   " }).item).toBeDefined();
+  it("rejects bad prices, quantities and empty names", () => {
+    expect(validateSale({ ...base, items: [{ name: "Dress", qty: "1", unitNgn: "abc" }] }).items).toBeDefined();
+    expect(validateSale({ ...base, items: [{ name: "Dress", qty: "0", unitNgn: "100" }] }).items).toBeDefined();
+    expect(validateSale({ ...base, items: [{ name: "Dress", qty: "1.5", unitNgn: "100" }] }).items).toBeDefined();
+    expect(validateSale({ ...base, items: [{ name: "  ", qty: "1", unitNgn: "100" }] }).items).toBeDefined();
+    expect(validateSale({ ...base, items: [] }).items).toBeDefined();
   });
 
   it("enforces the contract's window bounds for custom delivery", () => {
@@ -76,6 +85,10 @@ describe("validateSale", () => {
 
   it("flags an ETN sale when no ETN price is available", () => {
     expect(validateSale({ ...base, token: ETN, rate: { ...rate, etnUsd: null } }).rate).toMatch(/ETN/);
+  });
+
+  it("rejects a total over ₦50,000,000", () => {
+    expect(validateSale({ ...base, items: [{ name: "Car", qty: "2", unitNgn: "30000000" }] }).items).toMatch(/50,000,000/);
   });
 
   it("stops a seller locking the link to their own wallet", () => {
@@ -101,6 +114,8 @@ describe("buildSale", () => {
       arbiter: ARBITER,
     });
     expect(details.item).toBe("Ankara dress");
+    expect(details.priceNgn).toBe("15000");
+    expect(details.items).toBeUndefined(); // one line needs no breakdown
     expect(terms.ref).toBe(hashOrderDetails(details));
   });
 
@@ -114,10 +129,62 @@ describe("buildSale", () => {
     expect("sellerName" in details || "note" in details).toBe(false);
   });
 
+  it("totals a multi-item sale and carries the breakdown", () => {
+    const { terms, details } = buildSale(
+      {
+        ...base,
+        items: [
+          { name: "Ankara dress", qty: "2", unitNgn: "7500" },
+          { name: "Gele", qty: "1", unitNgn: "2500.50" },
+        ],
+      },
+      1_000,
+      id,
+    );
+    expect(details.priceNgn).toBe("17500.5");
+    expect(details.item).toBe("Ankara dress +1 more");
+    expect(details.items).toEqual([
+      { name: "Ankara dress", qty: 2, unitNgn: "7500" },
+      { name: "Gele", qty: 1, unitNgn: "2500.50" },
+    ]);
+    // 17500.50 / 1373.28 = 12.7436… → 12.75 USDC
+    expect(terms.amount).toBe(12_750_000n);
+    expect(terms.ref).toBe(hashOrderDetails(details));
+  });
+
   it("generates random 32-byte ids by default", () => {
     const a = buildSale(base, 1_000).terms.id;
     const b = buildSale(base, 1_000).terms.id;
     expect(a).toMatch(/^0x[0-9a-f]{64}$/);
     expect(a).not.toBe(b);
+  });
+});
+
+describe("line item helpers", () => {
+  it("sums quantities and kobo exactly", () => {
+    expect(saleTotalNgn({ items: [{ name: "A", qty: "3", unitNgn: "0.10" }] })).toBe("0.3");
+    expect(saleTotalNgn({ items: [{ name: "A", qty: "2", unitNgn: "7500" }, { name: "B", qty: "1", unitNgn: "2500.50" }] })).toBe("17500.5");
+  });
+
+  it("is null while a row is incomplete", () => {
+    expect(saleTotalNgn({ items: [{ name: "A", qty: "", unitNgn: "100" }] })).toBeNull();
+    expect(saleTotalNgn({ items: [{ name: "A", qty: "1", unitNgn: "" }] })).toBeNull();
+  });
+
+  it("tolerates commas and naira signs in prices", () => {
+    expect(parseLineItems([{ name: "A", qty: "1", unitNgn: "₦15,000" }])).toEqual([
+      { name: "A", qty: 1, unitNgn: "15000" },
+    ]);
+  });
+
+  it("summarises multiple items", () => {
+    expect(saleSummary([{ name: "Dress", qty: 1, unitNgn: "1" }])).toBe("Dress");
+    expect(
+      saleSummary([
+        { name: "Dress", qty: 1, unitNgn: "1" },
+        { name: "Gele", qty: 1, unitNgn: "1" },
+        { name: "Shoes", qty: 1, unitNgn: "1" },
+      ]),
+    ).toBe("Dress +2 more");
   });
 });

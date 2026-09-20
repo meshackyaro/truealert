@@ -72,6 +72,43 @@ describe("payment links", () => {
     expect(decodeLink(encodeLink(bad))).toEqual({ ok: false, error: "Bad naira price." });
   });
 
+  it("carries a line-item breakdown that adds up", () => {
+    const withItems = {
+      ...payload,
+      details: {
+        ...details,
+        priceNgn: "17500.5",
+        items: [
+          { name: "Ankara dress", qty: 2, unitNgn: "7500" },
+          { name: "Gele", qty: 1, unitNgn: "2500.50" },
+        ],
+      } as OrderDetails,
+    };
+    const result = decodeLink(encodeLink(withItems));
+    expect(result.ok && result.payload.details.items).toHaveLength(2);
+  });
+
+  it("rejects a breakdown that doesn't add up to the total", () => {
+    const sneaky = {
+      ...payload,
+      details: { ...details, items: [{ name: "Dress", qty: 1, unitNgn: "1" }] } as OrderDetails,
+    };
+    expect(decodeLink(encodeLink(sneaky))).toEqual({
+      ok: false,
+      error: "The items in this link don't add up to the total.",
+    });
+  });
+
+  it("rejects bad quantities, empty names and stray fields in items", () => {
+    const bad = (items: unknown) =>
+      decodeLink(encodeLink({ ...payload, details: { ...details, items } as unknown as OrderDetails })).ok;
+    expect(bad([{ name: "Dress", qty: 0, unitNgn: "15000" }])).toBe(false);
+    expect(bad([{ name: "Dress", qty: 1.5, unitNgn: "15000" }])).toBe(false);
+    expect(bad([{ name: "   ", qty: 1, unitNgn: "15000" }])).toBe(false);
+    expect(bad([{ name: "Dress", qty: 1, unitNgn: "15000", note: "x" }])).toBe(false);
+    expect(bad([])).toBe(false);
+  });
+
   it("rejects an invalid mode", () => {
     const bad = { ...payload, terms: { ...payload.terms, mode: 7 as never } };
     expect(decodeLink(encodeLink(bad))).toEqual({ ok: false, error: "Bad payment mode in link." });

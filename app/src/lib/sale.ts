@@ -1,6 +1,15 @@
 import { bytesToHex, parseUnits, zeroAddress, type Address, type Hex } from "viem";
 import type { Token } from "@/config/tokens";
-import { DETAIL_LIMITS, hashOrderDetails, Mode, type OrderDetails, type Terms } from "./terms";
+import {
+  DETAIL_LIMITS,
+  hashOrderDetails,
+  koboToNaira,
+  lineItemsTotalKobo,
+  Mode,
+  type LineItem,
+  type OrderDetails,
+  type Terms,
+} from "./terms";
 
 const HOUR = 3_600;
 const DAY = 24 * HOUR;
@@ -58,12 +67,44 @@ function ceilDiv(a: bigint, b: bigint): bigint {
   return (a + b - 1n) / b;
 }
 
+/** A row of the seller's form; quantities and prices arrive as typed text. */
+export type SaleLineInput = { name: string; qty: string; unitNgn: string };
+
+/** Parses form rows into line items, or null if any row is malformed. */
+export function parseLineItems(rows: SaleLineInput[]): LineItem[] | null {
+  if (rows.length === 0 || rows.length > DETAIL_LIMITS.items) return null;
+  const items: LineItem[] = [];
+  for (const row of rows) {
+    const name = row.name.trim();
+    const qty = Number(row.qty);
+    const unitNgn = row.unitNgn.replace(/[,\s₦]/g, "");
+    if (!name || name.length > DETAIL_LIMITS.itemName) return null;
+    if (!/^\d+$/.test(row.qty.trim()) || !Number.isInteger(qty) || qty < 1 || qty > DETAIL_LIMITS.qty) return null;
+    if (!/^\d+(\.\d{1,2})?$/.test(unitNgn)) return null;
+    items.push({ name, qty, unitNgn });
+  }
+  return lineItemsTotalKobo(items) === null ? null : items;
+}
+
+/** Total naira for a parsed breakdown, e.g. "15000". */
+export function lineItemsTotal(items: LineItem[]): string | null {
+  const kobo = lineItemsTotalKobo(items);
+  return kobo === null || kobo <= 0n ? null : koboToNaira(kobo);
+}
+
+/** Short summary for the link and lists: "Ankara dress" or "Ankara dress +2 more". */
+export function saleSummary(items: LineItem[]): string {
+  const [first, ...rest] = items;
+  const name = first.name.slice(0, DETAIL_LIMITS.item - 10);
+  return rest.length ? `${name} +${rest.length} more` : name;
+}
+
 export type SaleInput = {
   mode: Mode;
   seller: Address;
   token: Token;
-  priceNgn: string;
-  item: string;
+  /** What the seller is selling; the total is the sum of these rows. */
+  items: SaleLineInput[];
   sellerName?: string;
   note?: string;
   rate: RateInput & { source: "quidax" | "official"; at: string };
@@ -73,7 +114,15 @@ export type SaleInput = {
   lockToBuyer?: Address;
 };
 
-export type SaleErrors = Partial<Record<"priceNgn" | "item" | "sellerName" | "note" | "delivery" | "rate" | "lockToBuyer", string>>;
+export type SaleErrors = Partial<
+  Record<"items" | "sellerName" | "note" | "delivery" | "rate" | "lockToBuyer", string>
+>;
+
+/** Total for a sale as typed, or null while the rows are incomplete. */
+export function saleTotalNgn(input: Pick<SaleInput, "items">): string | null {
+  const items = parseLineItems(input.items);
+  return items ? lineItemsTotal(items) : null;
+}
 
 export function deliveryWindows(delivery: SaleInput["delivery"]): { shipWindow: number; confirmWindow: number } {
   if (!delivery) return DELIVERY_PRESETS.sameDay;
@@ -84,14 +133,13 @@ export function deliveryWindows(delivery: SaleInput["delivery"]): { shipWindow: 
 /** Form-level validation with messages for the seller. Empty object = valid. */
 export function validateSale(input: SaleInput): SaleErrors {
   const errors: SaleErrors = {};
-  if (!/^\d+(\.\d{1,2})?$/.test(input.priceNgn) || Number(input.priceNgn) <= 0) {
-    errors.priceNgn = "Enter a price in naira, e.g. 15000";
-  } else if (Number(input.priceNgn) > 50_000_000) {
-    errors.priceNgn = "That's over ₦50,000,000. Please check the price.";
+  const items = parseLineItems(input.items);
+  const total = items && lineItemsTotal(items);
+  if (!items || !total) {
+    errors.items = "Add what you're selling, with a quantity and price for each line";
+  } else if (Number(total) > 50_000_000) {
+    errors.items = "That's over ₦50,000,000. Please check the prices.";
   }
-  const item = input.item.trim();
-  if (!item) errors.item = "Say what you're selling";
-  else if (item.length > DETAIL_LIMITS.item) errors.item = `Keep it under ${DETAIL_LIMITS.item} characters`;
   if ((input.sellerName?.trim().length ?? 0) > DETAIL_LIMITS.sellerName) {
     errors.sellerName = `Keep it under ${DETAIL_LIMITS.sellerName} characters`;
   }
@@ -110,7 +158,7 @@ export function validateSale(input: SaleInput): SaleErrors {
   if (input.lockToBuyer && input.lockToBuyer.toLowerCase() === input.seller.toLowerCase()) {
     errors.lockToBuyer = "That's your own wallet";
   }
-  if (!errors.priceNgn && quoteAmount(input.priceNgn, input.rate, input.token) === null) {
+  if (total && quoteAmount(total, input.rate, input.token) === null) {
     errors.rate = input.token.native
       ? "ETN price unavailable right now. Try USDC or again shortly."
       : "Exchange rate unavailable right now. Try again shortly.";
@@ -125,15 +173,21 @@ export function randomTermsId(): Hex {
 /** Everything the seller signs, plus the details the link carries. */
 export function buildSale(input: SaleInput, nowSeconds: number, id: Hex = randomTermsId()) {
   const isProtected = input.mode === Mode.Protected;
+  const items = parseLineItems(input.items);
+  const priceNgn = items && lineItemsTotal(items);
+  if (!items || !priceNgn) throw new Error("Can't price this sale");
+
   const details: OrderDetails = {
     v: 1,
-    item: input.item.trim(),
-    priceNgn: input.priceNgn,
+    item: saleSummary(items),
+    priceNgn,
+    // A single line adds nothing a buyer can't already see, and keeps links short.
+    ...(items.length > 1 ? { items } : {}),
     ...(input.sellerName?.trim() ? { sellerName: input.sellerName.trim() } : {}),
     ...(input.note?.trim() ? { note: input.note.trim() } : {}),
     rate: { ngnPerUsd: input.rate.ngnPerUsd, source: input.rate.source, at: input.rate.at },
   };
-  const amount = quoteAmount(input.priceNgn, input.rate, input.token);
+  const amount = quoteAmount(priceNgn, input.rate, input.token);
   if (amount === null) throw new Error("Can't quote this sale");
   const windows = isProtected ? deliveryWindows(input.delivery) : { shipWindow: 0, confirmWindow: 0 };
   const terms: Terms = {

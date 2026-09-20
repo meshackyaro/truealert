@@ -1,5 +1,13 @@
 import { getAddress, isAddress, isHex, type Address, type Hex } from "viem";
-import { DETAIL_LIMITS, hashOrderDetails, Mode, type OrderDetails, type Terms } from "./terms";
+import {
+  DETAIL_LIMITS,
+  hashOrderDetails,
+  lineItemsTotalKobo,
+  Mode,
+  type LineItem,
+  type OrderDetails,
+  type Terms,
+} from "./terms";
 
 /**
  * A payment link carries everything the buyer page needs, so it works with no
@@ -122,6 +130,8 @@ export function validateDetails(details: unknown): string | undefined {
     return "Seller name too long.";
   }
   if (d.note !== undefined && !isShortString(d.note, DETAIL_LIMITS.note, true)) return "Note too long.";
+  const itemsError = validateLineItems(d.items, d.priceNgn as string);
+  if (itemsError) return itemsError;
   if (d.rate !== undefined) {
     const r = d.rate as Record<string, unknown>;
     if (
@@ -136,8 +146,29 @@ export function validateDetails(details: unknown): string | undefined {
       return "Bad exchange rate in link.";
     }
   }
-  const allowed = new Set(["v", "item", "priceNgn", "sellerName", "note", "rate"]);
+  const allowed = new Set(["v", "item", "items", "priceNgn", "sellerName", "note", "rate"]);
   if (Object.keys(d).some((k) => !allowed.has(k))) return "Unexpected field in order details.";
+  return undefined;
+}
+
+/** A breakdown is optional, but when present it must be well formed and add up. */
+function validateLineItems(items: unknown, priceNgn: string): string | undefined {
+  if (items === undefined) return undefined;
+  if (!Array.isArray(items) || items.length === 0 || items.length > DETAIL_LIMITS.items) {
+    return "Bad item list in link.";
+  }
+  for (const line of items as LineItem[]) {
+    if (!line || typeof line !== "object" || Array.isArray(line)) return "Bad item in link.";
+    if (Object.keys(line).some((k) => !["name", "qty", "unitNgn"].includes(k))) {
+      return "Unexpected field in an item.";
+    }
+    if (!isShortString(line.name, DETAIL_LIMITS.itemName)) return "Missing or too-long item name.";
+  }
+  const total = lineItemsTotalKobo(items as LineItem[]);
+  if (total === null) return "Bad item quantity or price in link.";
+  const [whole, fraction = ""] = priceNgn.split(".");
+  const priceKobo = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
+  if (total !== priceKobo) return "The items in this link don't add up to the total.";
   return undefined;
 }
 
