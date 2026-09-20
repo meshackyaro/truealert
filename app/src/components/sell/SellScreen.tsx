@@ -4,16 +4,21 @@ import { useState } from "react";
 import { useAccount } from "wagmi";
 import { WalletGate } from "@/components/pay/WalletGate";
 import { useChainNow } from "@/hooks/useChainNow";
+import { useRate } from "@/hooks/useRate";
 import { useCreateSale, type CreatedSale } from "@/hooks/useCreateSale";
 import { addSale, loadSales, type RecentSale } from "@/lib/recentSales";
+import type { RateQuote } from "@/lib/server/rates";
 import { Mode } from "@/lib/terms";
 import { NewSaleForm } from "./NewSaleForm";
 import { RecentSales } from "./RecentSales";
 import { SaleCreated } from "./SaleCreated";
 
 /** Seller home: create a sale, then show its QR / share link, plus recent sales. */
-export function SellScreen() {
+export function SellScreen({ initialRate }: { initialRate?: RateQuote }) {
   const { isConnected } = useAccount();
+  // Warm the rate query here: the form mounts only after the wallet connects,
+  // which would otherwise delay the first fetch by seconds.
+  useRate(initialRate);
   return (
     <>
       {!isConnected && <Intro />}
