@@ -8,14 +8,16 @@ import { Card } from "@/components/Shell";
 import { env } from "@/config/env";
 import { supportedTokens, type Token } from "@/config/tokens";
 import { useRate } from "@/hooks/useRate";
-import { formatClock, formatDuration, formatTokenAmount } from "@/lib/format";
+import { formatClock, formatDuration, formatNaira, formatTokenAmount } from "@/lib/format";
 import {
   DELIVERY_PRESETS,
   quoteAmount,
+  saleTotalNgn,
   validateSale,
   type DeliveryPreset,
   type SaleErrors,
   type SaleInput,
+  type SaleLineInput,
 } from "@/lib/sale";
 import { Mode } from "@/lib/terms";
 
@@ -42,8 +44,7 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
   const rate = useRate();
 
   const [mode, setMode] = useState<Mode>(Mode.PayNow);
-  const [item, setItem] = useState("");
-  const [priceNgn, setPriceNgn] = useState("");
+  const [rows, setRows] = useState<SaleLineInput[]>([{ name: "", qty: "1", unitNgn: "" }]);
   const [tokenAddress, setTokenAddress] = useState<Address>(tokens.find((t) => !t.native)?.address ?? zeroAddress);
   const [preset, setPreset] = useState<DeliveryPreset | "custom">("sameDay");
   const [shipHours, setShipHours] = useState("24");
@@ -58,14 +59,16 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
 
   const token = tokens.find((t) => t.address === tokenAddress) as Token;
   const isProtected = mode === Mode.Protected;
-  const price = priceNgn.replace(/[,\s₦]/g, "");
+  const total = saleTotalNgn({ items: rows });
+
+  const setRow = (index: number, patch: Partial<SaleLineInput>) =>
+    setRows((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
   const input: SaleInput | undefined = rate.data && {
     mode,
     seller,
     token,
-    priceNgn: price,
-    item,
+    items: rows,
     sellerName,
     note,
     rate: rate.data,
@@ -78,7 +81,7 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
   };
   const errors: SaleErrors = input ? validateSale(input) : {};
   if (lockTo && !isAddress(lockTo)) errors.lockToBuyer = "That isn't a wallet address";
-  const amount = input && !errors.priceNgn ? quoteAmount(price, input.rate, token) : null;
+  const amount = input && total ? quoteAmount(total, input.rate, token) : null;
   const valid = !!input && Object.keys(errors).length === 0;
   const show = (field: keyof SaleErrors) => (submitted || field === "rate" || field === "delivery" ? errors[field] : undefined);
 
@@ -117,42 +120,86 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
       </div>
 
       <div className="mt-4 space-y-4">
-        <Field label="What are you selling?" error={show("item")}>
-          <input
-            className={inputClass}
-            value={item}
-            onChange={(e) => setItem(e.target.value)}
-            placeholder="e.g. Ankara dress"
-            maxLength={80}
-          />
-        </Field>
+        <fieldset>
+          <legend className="mb-1.5 text-sm font-medium text-fg">What are you selling?</legend>
+          <div className="space-y-2">
+            {rows.map((row, index) => (
+              // Narrow phones: name on its own row, then qty and price side by
+              // side. From 640px it's one row: qty · name · price.
+              <div
+                key={index}
+                className="grid grid-cols-2 gap-2 sm:grid-cols-[3.5rem_1fr_7.5rem] sm:items-center"
+              >
+                <input
+                  className={`${inputClass} col-span-2 w-full min-w-0 sm:order-2 sm:col-span-1`}
+                  value={row.name}
+                  onChange={(e) => setRow(index, { name: e.target.value })}
+                  placeholder={index === 0 ? "e.g. Ankara dress" : "Another item"}
+                  aria-label={`Item ${index + 1}`}
+                  maxLength={60}
+                />
+                <input
+                  className={`${inputClass} w-full px-1 text-center tabular-nums sm:order-1`}
+                  value={row.qty}
+                  onChange={(e) => setRow(index, { qty: e.target.value.replace(/\D/g, "") })}
+                  inputMode="numeric"
+                  aria-label={`Quantity for item ${index + 1}`}
+                  placeholder="1"
+                />
+                <div className="relative sm:order-3">
+                  <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-muted">₦</span>
+                  <input
+                    className={`${inputClass} w-full pl-6 pr-2 tabular-nums`}
+                    value={row.unitNgn}
+                    onChange={(e) => setRow(index, { unitNgn: e.target.value })}
+                    inputMode="decimal"
+                    aria-label={`Price for item ${index + 1}`}
+                    placeholder="15000"
+                  />
+                </div>
+                {rows.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
+                    aria-label={`Remove item ${index + 1}`}
+                    className="col-span-2 -mt-1 flex min-h-8 items-center justify-end text-xs font-medium text-muted hover:text-danger sm:order-4 sm:col-span-3"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {show("items") && <p className="mt-1.5 text-xs font-medium text-danger">{errors.items}</p>}
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setRows((current) => [...current, { name: "", qty: "1", unitNgn: "" }])}
+              disabled={rows.length >= 20}
+              className="flex min-h-11 items-center gap-1 text-sm font-medium text-brand disabled:text-muted"
+            >
+              + Add item
+            </button>
+            {rows.length > 1 && (
+              <p className="text-right text-sm text-muted">
+                Total{" "}
+                <span className="text-lg font-bold text-fg tabular-nums">
+                  {total ? formatNaira(total) : "—"}
+                </span>
+              </p>
+            )}
+          </div>
+        </fieldset>
 
-        <div className="grid grid-cols-[1fr_auto] gap-2">
-          <Field label="Price" error={show("priceNgn")}>
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-lg font-semibold text-muted">
-                ₦
-              </span>
-              <input
-                className={`${inputClass} pl-8 text-lg font-semibold tabular-nums`}
-                value={priceNgn}
-                onChange={(e) => setPriceNgn(e.target.value)}
-                inputMode="decimal"
-                placeholder="15000"
-                aria-label="Price in naira"
-              />
-            </div>
-          </Field>
-          <Field label="Paid in">
-            <select className={inputClass} value={tokenAddress} onChange={(e) => setTokenAddress(e.target.value as Address)}>
-              {tokens.map((t) => (
-                <option key={t.address} value={t.address}>
-                  {t.symbol}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
+        <Field label="Buyer pays in">
+          <select className={`${inputClass} w-full`} value={tokenAddress} onChange={(e) => setTokenAddress(e.target.value as Address)}>
+            {tokens.map((t) => (
+              <option key={t.address} value={t.address}>
+                {t.symbol}
+              </option>
+            ))}
+          </select>
+        </Field>
 
         <QuoteLine amount={amount} token={token} rate={rate.data} loading={rate.isLoading} error={rate.isError || !!errors.rate} message={errors.rate} />
 
@@ -174,10 +221,10 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
             {preset === "custom" && (
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Hours to ship">
-                  <input className={inputClass} inputMode="numeric" value={shipHours} onChange={(e) => setShipHours(e.target.value)} />
+                  <input className={`${inputClass} w-full`} inputMode="numeric" value={shipHours} onChange={(e) => setShipHours(e.target.value)} />
                 </Field>
                 <Field label="Hours to confirm">
-                  <input className={inputClass} inputMode="numeric" value={confirmHours} onChange={(e) => setConfirmHours(e.target.value)} />
+                  <input className={`${inputClass} w-full`} inputMode="numeric" value={confirmHours} onChange={(e) => setConfirmHours(e.target.value)} />
                 </Field>
               </div>
             )}
@@ -204,13 +251,13 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
           <summary className="cursor-pointer text-muted">More options</summary>
           <div className="mt-3 space-y-3">
             <Field label="Shop name (shown to buyers)" error={show("sellerName")}>
-              <input className={inputClass} value={sellerName} onChange={(e) => setSellerName(e.target.value)} placeholder="e.g. Chioma's Closet" maxLength={60} />
+              <input className={`${inputClass} w-full`} value={sellerName} onChange={(e) => setSellerName(e.target.value)} placeholder="e.g. Chioma's Closet" maxLength={60} />
             </Field>
             <Field label="Note to buyer" error={show("note")}>
-              <textarea className={inputClass} rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Size 12, blue. Delivery to Yaba." maxLength={280} />
+              <textarea className={`${inputClass} w-full`} rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Size 12, blue. Delivery to Yaba." maxLength={280} />
             </Field>
             <Field label="Only this wallet can pay (optional)" error={submitted || lockTo ? errors.lockToBuyer : undefined}>
-              <input className={`${inputClass} font-mono text-xs`} value={lockTo} onChange={(e) => setLockTo(e.target.value.trim())} placeholder="0x… (for repeat customers)" />
+              <input className={`${inputClass} w-full font-mono text-xs`} value={lockTo} onChange={(e) => setLockTo(e.target.value.trim())} placeholder="0x… (for repeat customers)" />
             </Field>
           </div>
         </details>

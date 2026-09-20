@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
 
-/** Shared input styling: 16px text so iOS doesn't zoom, generous tap target. */
+/**
+ * Shared input styling: 16px text so iOS doesn't zoom, generous tap target.
+ * Width is left to the caller — a fixed `w-full` here would fight the narrow
+ * quantity and price fields in the line-item rows.
+ */
 export const inputClass =
-  "w-full rounded-xl border border-border-strong bg-surface px-3.5 py-3 text-base text-fg outline-none transition-colors placeholder:text-muted/70 focus:border-brand focus:ring-4 focus:ring-brand/15";
+  "rounded-xl border border-border-strong bg-surface px-3.5 py-3 text-base text-fg outline-none transition-colors placeholder:text-muted/70 focus:border-brand focus:ring-4 focus:ring-brand/15";
 
 export function Field({
   label,
