@@ -33,9 +33,13 @@ export function WalletGate({ children, prompt }: { children: ReactNode; prompt: 
   }
 
   const account = (
-    <p className="flex items-center justify-between px-1 text-xs text-muted">
+    <p className="flex min-h-11 items-center justify-between px-1 text-xs text-muted">
       <span>Wallet {shortAddress(address)}</span>
-      <button type="button" className="underline" onClick={() => disconnect()}>
+      <button
+        type="button"
+        className="-mr-2 flex min-h-11 items-center rounded-lg px-2 underline hover:text-fg"
+        onClick={() => disconnect()}
+      >
         Disconnect
       </button>
     </p>

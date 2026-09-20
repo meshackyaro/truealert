@@ -182,8 +182,13 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
               </div>
             )}
             {env.arbiterAddress ? (
-              <label className="flex items-start gap-2 text-sm">
-                <input type="checkbox" className="mt-1" checked={useArbiter} onChange={(e) => setUseArbiter(e.target.checked)} />
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl py-1 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-5 shrink-0 accent-[var(--brand)]"
+                  checked={useArbiter}
+                  onChange={(e) => setUseArbiter(e.target.checked)}
+                />
                 <span>
                   Disputes go to TrueAlert Resolution
                   <span className="block text-xs text-muted">Buyers trust protected orders more when problems can be reviewed.</span>

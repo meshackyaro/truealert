@@ -100,6 +100,12 @@ scripts/              local chain, test links, ABI sync
 e2e/                  Playwright end-to-end tests
 ```
 
+## Design
+
+Semantic colour tokens live in `src/app/globals.css` (`--surface`, `--fg`, `--brand` …) and are exposed to Tailwind through `@theme inline`, so components use `bg-surface` / `text-muted` rather than raw palette colours. That gives light and dark themes from one place — dark follows the device's `prefers-color-scheme`.
+
+Layout is mobile-first: a single column that stays comfortable from 320px up, widening on tablets. Type uses fluid `clamp()` sizes, tap targets are at least 44px, focus rings are visible everywhere, and `prefers-reduced-motion` is respected. Padding respects notched phones via `safe-top` / `safe-bottom` and `viewport-fit=cover`. QR codes always render dark-on-white, even in dark mode, because inverted codes confuse many scanners.
+
 ## Notes
 
 - **Electroneum testnet chain:** we define it in `src/config/chains.ts` because viem's built-in entry points at a dead RPC.

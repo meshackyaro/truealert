@@ -14,7 +14,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh flex-col">
       <header className="safe-top sticky top-0 z-30 border-b border-border bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-lg items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:max-w-2xl">
-          <Link href="/" className="text-lg font-bold tracking-tight">
+          <Link href="/" className="-mx-2 flex min-h-11 items-center px-2 text-lg font-bold tracking-tight">
             True<span className="text-brand">Alert</span>
           </Link>
           {label && <Badge tone="warning">{label}</Badge>}
