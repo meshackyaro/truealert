@@ -13,7 +13,7 @@ import {
   shortAddress,
 } from "@/lib/format";
 import type { LinkPayload } from "@/lib/link";
-import { Mode } from "@/lib/terms";
+import { koboToNaira, lineItemsTotalKobo, Mode, type LineItem } from "@/lib/terms";
 
 type Props = {
   payload: LinkPayload;
@@ -54,6 +54,8 @@ export function InvoiceCard({ payload, token, now, showExpiry }: Props) {
         </p>
       )}
 
+      {details.items && details.items.length > 1 && <Breakdown items={details.items} />}
+
       {details.note && (
         <p className="mt-3 whitespace-pre-line break-words rounded-lg bg-surface-muted p-3 text-sm text-fg">
           {details.note}
@@ -70,6 +72,26 @@ export function InvoiceCard({ payload, token, now, showExpiry }: Props) {
         </p>
       )}
     </Card>
+  );
+}
+
+/** What the total is made of. The link is rejected if these don't add up. */
+function Breakdown({ items }: { items: LineItem[] }) {
+  return (
+    <ul className="mt-4 divide-y divide-border rounded-xl bg-surface-muted px-3 text-sm ring-1 ring-border">
+      {items.map((line, i) => {
+        const kobo = lineItemsTotalKobo([line]);
+        return (
+          <li key={`${line.name}-${i}`} className="flex items-baseline justify-between gap-3 py-2.5">
+            <span className="min-w-0 break-words">
+              {line.qty > 1 && <span className="text-muted">{line.qty} × </span>}
+              {line.name}
+            </span>
+            <span className="shrink-0 tabular-nums">{kobo === null ? "—" : formatNaira(koboToNaira(kobo))}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

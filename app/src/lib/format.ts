@@ -1,16 +1,19 @@
 import { formatUnits } from "viem";
 
-const nairaFormat = new Intl.NumberFormat("en-NG", {
-  style: "currency",
-  currency: "NGN",
-  currencyDisplay: "narrowSymbol",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
+function nairaFormat(fractionDigits: 0 | 2) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    currencyDisplay: "narrowSymbol",
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+}
 
-/** "15000" → "₦15,000" */
+/** "15000" → "₦15,000"; "2500.5" → "₦2,500.50" (kobo always shown in pairs). */
 export function formatNaira(priceNgn: string | number): string {
-  return nairaFormat.format(Number(priceNgn));
+  const value = Number(priceNgn);
+  return nairaFormat(Number.isInteger(value) ? 0 : 2).format(value);
 }
 
 /**

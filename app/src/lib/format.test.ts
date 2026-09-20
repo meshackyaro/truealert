@@ -10,7 +10,8 @@ import {
 describe("formatNaira", () => {
   it("groups thousands with the naira sign", () => {
     expect(formatNaira("15000")).toBe("₦15,000");
-    expect(formatNaira("2500.5")).toBe("₦2,500.5");
+    expect(formatNaira("2500.5")).toBe("₦2,500.50");
+    expect(formatNaira("17500.5")).toBe("₦17,500.50");
   });
 });
 
