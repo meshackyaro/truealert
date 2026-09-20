@@ -32,6 +32,7 @@ Copy `.env.example` to `.env.local`:
 | `NEXT_PUBLIC_TRUEALERT_ADDRESS` | Deployed `TrueAlert` contract |
 | `NEXT_PUBLIC_USDC_ADDRESS` | USDC (MockUSDC on testnet) |
 | `NEXT_PUBLIC_ARBITER_ADDRESS` | The "TrueAlert Resolution" arbiter wallet shown as recognised to buyers |
+| `RATE_FIXED_NGN_PER_USD` / `RATE_FIXED_ETN_USD` | Development only: pin the rate so the app works offline and quotes are reproducible |
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | Optional. Enables MetaMask/Trust/WalletConnect. Without it only browser-injected wallets work, which includes wallet in-app browsers. |
 
 ## Run locally (no testnet needed)
@@ -78,6 +79,8 @@ The end-to-end suite injects a minimal test wallet that forwards to anvil's unlo
 The seller suite covers creating a sale, the QR and share link, the live PAID confirmation, marking shipped, collecting after the deadline, cancelling with a refund, and the recent-sales list.
 
 ## Money and rates
+
+A sale can have several lines (quantity, item, unit price). The naira **total is the sum of the lines** and is what gets signed and converted; the breakdown travels in the link so the buyer sees what makes up the total, and a link whose lines don't add up is rejected. Sums are computed in kobo, so there's no floating-point drift.
 
 Sellers price in naira. `/api/rate` quotes the Quidax USDT/NGN midpoint (what stablecoins actually trade for in naira), falling back to the daily official rate, and caches for 60s. Amounts are rounded **up** to 0.01 of the token, so the buyer pays exactly what's displayed and the seller never receives less than the naira price. The rate is locked into the signed terms when the sale is created.
 
