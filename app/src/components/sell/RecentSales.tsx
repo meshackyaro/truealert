@@ -10,11 +10,11 @@ import { saleBadge, type RecentSale, type SaleBadge } from "@/lib/recentSales";
 import { Mode } from "@/lib/terms";
 
 const toneClasses: Record<SaleBadge["tone"], string> = {
-  neutral: "bg-neutral-100 text-neutral-600",
-  waiting: "bg-amber-100 text-amber-800",
-  action: "bg-green-100 text-green-800",
-  done: "bg-green-600 text-white",
-  problem: "bg-red-100 text-red-800",
+  neutral: "bg-surface-muted text-muted",
+  waiting: "bg-warning-soft text-warning",
+  action: "bg-success-soft text-success",
+  done: "bg-brand text-on-brand",
+  problem: "bg-danger-soft text-danger",
 };
 
 /** The seller's recent sales on this device, with live status from the chain. */
@@ -40,8 +40,8 @@ export function RecentSales({
 
   return (
     <Card className="p-0">
-      <h2 className="px-5 pt-4 text-sm font-semibold text-neutral-700">Recent sales</h2>
-      <ul className="mt-2 divide-y divide-neutral-100">
+      <h2 className="px-5 pt-4 text-sm font-semibold text-fg">Recent sales</h2>
+      <ul className="mt-2 divide-y divide-border">
         {sales.map((sale, i) => {
           const { terms, details } = sale.payload;
           const token = findToken(terms.token);
@@ -52,11 +52,11 @@ export function RecentSales({
               <button
                 type="button"
                 onClick={() => onOpen(sale)}
-                className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left hover:bg-neutral-50"
+                className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left hover:bg-surface-muted"
               >
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{details.item}</span>
-                  <span className="block text-xs text-neutral-500">
+                  <span className="block text-xs text-muted">
                     {formatNaira(details.priceNgn)}
                     {token && ` · ${formatTokenAmount(terms.amount, token.decimals)} ${token.symbol}`}
                     {terms.mode === Mode.Protected && " · Protected"}

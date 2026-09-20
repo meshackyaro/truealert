@@ -13,19 +13,19 @@ export function PaidReceipt({ payload, token, hash }: { payload: LinkPayload; to
   const url = txUrl(env.chain, hash);
   return (
     <Card className="text-center">
-      <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-green-100 text-3xl text-green-700">
+      <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-success-soft text-4xl text-success ring-8 ring-success/10">
         ✓
       </div>
-      <h2 className="mt-3 text-2xl font-bold">Paid</h2>
-      <p className="mt-1 text-neutral-600">
+      <h2 className="mt-4 text-hero font-bold">Paid</h2>
+      <p className="mt-1 text-muted">
         {formatNaira(payload.details.priceNgn)} ·{" "}
         {formatTokenAmount(payload.terms.amount, token.decimals)} {token.symbol} to{" "}
         {payload.details.sellerName ?? shortAddress(payload.terms.seller)}
       </p>
-      <p className="mt-3 text-sm text-neutral-500">
+      <p className="mt-3 text-sm text-muted">
         The seller&apos;s screen confirms this from the blockchain. No screenshot needed.
       </p>
-      <p className="mt-3 break-all font-mono text-xs text-neutral-500">
+      <p className="mt-3 break-all font-mono text-xs text-muted">
         {url ? (
           <a href={url} target="_blank" rel="noreferrer" className="underline">
             View transaction {shortAddress(hash)}

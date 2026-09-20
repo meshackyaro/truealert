@@ -29,13 +29,13 @@ export function SaleCreated({ sale, onNew }: { sale: CreatedSale; onNew: () => v
   return (
     <>
       <Card className="text-center">
-        <p className="text-sm text-neutral-500">{details.item}</p>
+        <p className="text-sm text-muted">{details.item}</p>
         <p className="text-4xl font-bold tracking-tight">{formatNaira(details.priceNgn)}</p>
-        <p className="text-sm text-neutral-600">{amount}</p>
+        <p className="text-sm text-muted">{amount}</p>
 
         {!isProtected && !settled && (
           <>
-            <div className="mx-auto mt-4 w-full max-w-72 rounded-2xl bg-white p-3 ring-1 ring-neutral-200">
+            <div className="mx-auto mt-4 w-full max-w-72 rounded-2xl bg-surface p-3 ring-1 ring-border">
               <QRCodeSVG value={sale.url} size={512} level="L" className="h-auto w-full" title="Payment QR code" />
             </div>
             <p className="mt-3 text-sm font-medium">Customer scans with their phone camera or wallet</p>
@@ -43,7 +43,7 @@ export function SaleCreated({ sale, onNew }: { sale: CreatedSale; onNew: () => v
         )}
 
         {now !== undefined && !settled && (
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-muted">
             {now > Number(terms.expiry) ? "This link has expired" : `Price locked · ${formatTimeLeft(terms.expiry, now)}`}
           </p>
         )}
@@ -70,7 +70,7 @@ function ShareLink({ sale, amount }: { sale: CreatedSale; amount: string }) {
   return (
     <Card>
       <h2 className="font-semibold">Send this link to your buyer</h2>
-      <p className="mt-1 text-sm text-neutral-600">
+      <p className="mt-1 text-sm text-muted">
         Their money is held safely until they confirm delivery. You&apos;ll ship once they&apos;ve paid.
       </p>
       <div className="mt-3 space-y-2">
@@ -90,7 +90,7 @@ function ShareLink({ sale, amount }: { sale: CreatedSale; amount: string }) {
         <CopyLink url={sale.url} label="Copy link" bare />
       </div>
       <details className="mt-3 text-sm">
-        <summary className="cursor-pointer text-neutral-600">Show QR code</summary>
+        <summary className="cursor-pointer text-muted">Show QR code</summary>
         <div className="mx-auto mt-3 w-full max-w-64">
           <QRCodeSVG value={sale.url} size={512} level="L" className="h-auto w-full" title="Payment link QR code" />
         </div>

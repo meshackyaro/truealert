@@ -33,7 +33,7 @@ export function WalletGate({ children, prompt }: { children: ReactNode; prompt: 
   }
 
   const account = (
-    <p className="flex items-center justify-between px-1 text-xs text-neutral-500">
+    <p className="flex items-center justify-between px-1 text-xs text-muted">
       <span>Wallet {shortAddress(address)}</span>
       <button type="button" className="underline" onClick={() => disconnect()}>
         Disconnect
@@ -47,7 +47,7 @@ export function WalletGate({ children, prompt }: { children: ReactNode; prompt: 
         <Button onClick={() => switchChain({ chainId: env.chain.id })} busy={switching}>
           Switch to {env.chain.name}
         </Button>
-        {switchError && <p className="px-1 text-sm text-red-700">{friendlyError(switchError)}</p>}
+        {switchError && <p className="px-1 text-sm text-danger">{friendlyError(switchError)}</p>}
         {account}
       </div>
     );

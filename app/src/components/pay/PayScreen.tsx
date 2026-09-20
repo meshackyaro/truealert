@@ -71,12 +71,21 @@ function Invoice({ payload }: { payload: LinkPayload }) {
         showExpiry={view.kind === "payable" || view.kind === "expired"}
       />
       {verified && (
-        <p className="px-1 text-xs text-green-800">
-          ✓ Signed by the seller. The price and details above can&apos;t be changed.
+        <p className="flex items-start gap-2 rounded-xl bg-success-soft px-3 py-2 text-xs text-success ring-1 ring-success/20">
+          <span aria-hidden className="mt-px font-bold">
+            ✓
+          </span>
+          <span>Signed by the seller. The price and details above can&apos;t be changed.</span>
         </p>
       )}
       {view.kind === "loading" && (
-        <p className="px-1 text-sm text-neutral-500">Checking the blockchain…</p>
+        <p className="flex items-center gap-2 px-1 text-sm text-muted">
+          <span
+            aria-hidden
+            className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+          />
+          Checking the blockchain…
+        </p>
       )}
       <ViewNotice view={view} />
       {view.kind === "payable" && (

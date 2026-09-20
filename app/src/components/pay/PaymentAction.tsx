@@ -101,7 +101,7 @@ export function PaymentAction({ payload, token, onDone }: Props) {
 
   return (
     <div className="space-y-3">
-      <p className={`px-1 text-sm ${notEnough ? "text-red-700" : "text-neutral-600"}`}>
+      <p className={`px-1 text-sm ${notEnough ? "text-danger" : "text-muted"}`}>
         {balance.value !== undefined &&
           `Your balance: ${formatTokenAmount(balance.value, token.decimals)} ${token.symbol}`}
         {notEnough && " (not enough for this payment)"}
@@ -112,7 +112,7 @@ export function PaymentAction({ payload, token, onDone }: Props) {
           {mintTx.busy ? txStatusLabel[mintTx.status] : "Get free test USDC"}
         </Button>
       )}
-      {mintTx.error && <p className="px-1 text-sm text-red-700">{mintTx.error}</p>}
+      {mintTx.error && <p className="px-1 text-sm text-danger">{mintTx.error}</p>}
 
       {noGas && (
         <Notice tone="warning" title="You need a little ETN for the network fee">
@@ -143,11 +143,11 @@ export function PaymentAction({ payload, token, onDone }: Props) {
       )}
 
       {needsApproval && !approveTx.busy && (
-        <p className="px-1 text-xs text-neutral-500">
+        <p className="px-1 text-xs text-muted">
           Step 1 of 2: let TrueAlert take exactly {amountLabel}, nothing more. Then you pay.
         </p>
       )}
-      {activeTx.error && <p className="px-1 text-sm text-red-700">{activeTx.error}</p>}
+      {activeTx.error && <p className="px-1 text-sm text-danger">{activeTx.error}</p>}
     </div>
   );
 }

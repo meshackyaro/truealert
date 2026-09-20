@@ -82,9 +82,9 @@ function BuyerActions({ payload, order, now, onChanged }: OrderActionProps) {
         />
       )}
       {actions.extend && (
-        <div className="rounded-xl bg-neutral-50 p-3">
+        <div className="rounded-xl bg-surface-muted p-3">
           <p className="text-sm font-medium">Not arrived yet?</p>
-          <p className="text-xs text-neutral-500">Give the delivery more time. You can do this once.</p>
+          <p className="text-xs text-muted">Give the delivery more time. You can do this once.</p>
           <div className="mt-2 flex gap-2">
             {[24, 48].map((hours) => (
               <Button
@@ -105,9 +105,9 @@ function BuyerActions({ payload, order, now, onChanged }: OrderActionProps) {
         </div>
       )}
       {actions.dispute && (
-        <div className="rounded-xl bg-red-50/50 p-3 ring-1 ring-red-100">
+        <div className="rounded-xl bg-danger-soft p-3 ring-1 ring-danger/20">
           <p className="text-sm font-medium">Something wrong?</p>
-          <p className="text-xs text-neutral-600">
+          <p className="text-xs text-muted">
             Nothing arrived, or it&apos;s not what you paid for? {referee} will decide within 14 days.
             Your money stays locked meanwhile, and if they don&apos;t decide in time you get a full
             refund. Keep your chat and delivery evidence ready.
@@ -122,9 +122,9 @@ function BuyerActions({ payload, order, now, onChanged }: OrderActionProps) {
         </div>
       )}
       {order.extended && order.status === OrderStatus.Shipped && (
-        <p className="px-1 text-xs text-neutral-500">You&apos;ve extended this delivery once.</p>
+        <p className="px-1 text-xs text-muted">You&apos;ve extended this delivery once.</p>
       )}
-      {tx.error && <p className="px-1 text-sm text-red-700">{tx.error}</p>}
+      {tx.error && <p className="px-1 text-sm text-danger">{tx.error}</p>}
     </div>
   );
 }

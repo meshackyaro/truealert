@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { getAddress, isAddress, zeroAddress, type Address } from "viem";
 import { Button } from "@/components/Button";
+import { Field, inputClass } from "@/components/Field";
 import { Card } from "@/components/Shell";
 import { env } from "@/config/env";
 import { supportedTokens, type Token } from "@/config/tokens";
@@ -92,7 +93,7 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
 
   return (
     <Card>
-      <div className="grid grid-cols-2 gap-1 rounded-xl bg-neutral-100 p-1" role="radiogroup" aria-label="Payment type">
+      <div className="grid grid-cols-2 gap-1 rounded-xl bg-surface-muted p-1" role="radiogroup" aria-label="Payment type">
         {[
           { value: Mode.PayNow, label: "Pay now", hint: "In person" },
           { value: Mode.Protected, label: "🛡 Protected", hint: "In the DMs" },
@@ -103,12 +104,14 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
             role="radio"
             aria-checked={mode === option.value}
             onClick={() => setMode(option.value)}
-            className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-              mode === option.value ? "bg-white shadow-sm" : "text-neutral-500"
+            className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
+              mode === option.value
+                ? "bg-surface text-fg shadow-card ring-1 ring-border"
+                : "text-muted hover:text-fg"
             }`}
           >
             {option.label}
-            <span className="block text-xs font-normal text-neutral-500">{option.hint}</span>
+            <span className="block text-xs font-normal text-muted">{option.hint}</span>
           </button>
         ))}
       </div>
@@ -125,14 +128,20 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
         </Field>
 
         <div className="grid grid-cols-[1fr_auto] gap-2">
-          <Field label="Price (₦)" error={show("priceNgn")}>
-            <input
-              className={`${inputClass} text-lg font-semibold`}
-              value={priceNgn}
-              onChange={(e) => setPriceNgn(e.target.value)}
-              inputMode="decimal"
-              placeholder="15000"
-            />
+          <Field label="Price" error={show("priceNgn")}>
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-lg font-semibold text-muted">
+                ₦
+              </span>
+              <input
+                className={`${inputClass} pl-8 text-lg font-semibold tabular-nums`}
+                value={priceNgn}
+                onChange={(e) => setPriceNgn(e.target.value)}
+                inputMode="decimal"
+                placeholder="15000"
+                aria-label="Price in naira"
+              />
+            </div>
           </Field>
           <Field label="Paid in">
             <select className={inputClass} value={tokenAddress} onChange={(e) => setTokenAddress(e.target.value as Address)}>
@@ -150,7 +159,7 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
         {isProtected && (
           <>
             <Field label="Delivery" error={show("delivery")}>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid gap-2 sm:grid-cols-3">
                 {(Object.keys(DELIVERY_PRESETS) as DeliveryPreset[]).map((key) => (
                   <PresetButton key={key} active={preset === key} onClick={() => setPreset(key)} title={DELIVERY_PRESETS[key].label}>
                     {formatDuration(DELIVERY_PRESETS[key].shipWindow)} to ship ·{" "}
@@ -177,17 +186,17 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
                 <input type="checkbox" className="mt-1" checked={useArbiter} onChange={(e) => setUseArbiter(e.target.checked)} />
                 <span>
                   Disputes go to TrueAlert Resolution
-                  <span className="block text-xs text-neutral-500">Buyers trust protected orders more when problems can be reviewed.</span>
+                  <span className="block text-xs text-muted">Buyers trust protected orders more when problems can be reviewed.</span>
                 </span>
               </label>
             ) : (
-              <p className="text-xs text-neutral-500">No referee is configured, so this order can&apos;t be disputed.</p>
+              <p className="text-xs text-muted">No referee is configured, so this order can&apos;t be disputed.</p>
             )}
           </>
         )}
 
         <details className="text-sm">
-          <summary className="cursor-pointer text-neutral-600">More options</summary>
+          <summary className="cursor-pointer text-muted">More options</summary>
           <div className="mt-3 space-y-3">
             <Field label="Shop name (shown to buyers)" error={show("sellerName")}>
               <input className={inputClass} value={sellerName} onChange={(e) => setSellerName(e.target.value)} placeholder="e.g. Chioma's Closet" maxLength={60} />
@@ -204,24 +213,11 @@ export function NewSaleForm({ seller, busy, submitLabel, onSubmit }: Props) {
         <Button onClick={submit} busy={busy} disabled={!input || !!errors.rate}>
           {submitLabel(mode)}
         </Button>
-        <p className="text-center text-xs text-neutral-500">
+        <p className="text-center text-xs text-muted">
           You&apos;ll sign in your wallet. It&apos;s free: no network fee to create a sale.
         </p>
       </div>
     </Card>
-  );
-}
-
-const inputClass =
-  "w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-base outline-none focus:border-brand focus:ring-2 focus:ring-green-100";
-
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-sm font-medium text-neutral-700">{label}</span>
-      {children}
-      {error && <span className="mt-1 block text-xs text-red-700">{error}</span>}
-    </label>
   );
 }
 
@@ -231,10 +227,12 @@ function PresetButton({ active, onClick, title, children }: { active: boolean; o
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-xl p-2 text-left text-xs ring-1 ${active ? "bg-green-50 ring-brand" : "bg-white ring-neutral-300"}`}
+      className={`rounded-xl p-3 text-left text-xs transition-colors ${
+        active ? "bg-brand-soft ring-2 ring-brand" : "bg-surface ring-1 ring-border-strong hover:bg-surface-muted"
+      }`}
     >
-      <span className="block text-sm font-semibold">{title}</span>
-      <span className="text-neutral-500">{children}</span>
+      <span className="block text-sm font-semibold text-fg">{title}</span>
+      <span className="text-muted">{children}</span>
     </button>
   );
 }
@@ -254,23 +252,23 @@ function QuoteLine({
   error: boolean;
   message?: string;
 }) {
-  if (loading) return <p className="text-sm text-neutral-500">Getting today&apos;s rate…</p>;
+  if (loading) return <p className="text-sm text-muted">Getting today&apos;s rate…</p>;
   if (error || !rate) {
-    return <p className="text-sm text-red-700">{message ?? "Exchange rate unavailable. Try again shortly."}</p>;
+    return <p className="text-sm text-danger">{message ?? "Exchange rate unavailable. Try again shortly."}</p>;
   }
   return (
-    <p className="rounded-xl bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
+    <p className="rounded-xl bg-surface-muted px-3.5 py-3 text-sm text-fg ring-1 ring-border">
       {amount !== null ? (
         <>
           Buyer pays{" "}
-          <span className="font-semibold text-neutral-900">
+          <span className="font-semibold text-fg">
             {formatTokenAmount(amount, token.decimals)} {token.symbol}
           </span>
         </>
       ) : (
         "Enter a price to see what the buyer pays"
       )}
-      <span className="block text-xs text-neutral-500">
+      <span className="block text-xs text-muted">
         Rate ₦{Number(rate.ngnPerUsd).toLocaleString("en-NG")}/$ ·{" "}
         {rate.source === "quidax" ? "Quidax" : "Official rate (daily)"} · {formatClock(rate.at)} · locked when you create the sale
       </span>

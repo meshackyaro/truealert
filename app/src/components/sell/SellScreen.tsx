@@ -28,7 +28,7 @@ function Intro() {
   return (
     <div className="px-1">
       <h1 className="text-2xl font-bold tracking-tight">New sale</h1>
-      <p className="text-sm text-neutral-600">
+      <p className="text-sm text-muted">
         Get paid in person with a QR, or safely in the DMs with a protected link.
       </p>
     </div>
@@ -70,7 +70,7 @@ function Seller() {
           setSale(created);
         }}
       />
-      {error && <p className="px-1 text-sm text-red-700">{error}</p>}
+      {error && <p className="px-1 text-sm text-danger">{error}</p>}
       <RecentSales
         sales={sales}
         now={now}

@@ -107,18 +107,20 @@ export function OrderPanel({
         {orderSteps(order).map((step) => (
           <li key={step.label} className="flex-1">
             <span
-              className={`block h-1.5 rounded-full ${
-                step.state === "done" ? "bg-brand" : step.state === "current" ? "bg-green-300" : "bg-neutral-200"
+              className={`block h-1.5 rounded-full transition-colors ${
+                step.state === "done" ? "bg-brand" : step.state === "current" ? "bg-brand/40" : "bg-border-strong"
               }`}
             />
-            <span className={`mt-1 block text-[11px] ${step.state === "todo" ? "text-neutral-400" : "text-neutral-700"}`}>
+            <span
+              className={`mt-1.5 block text-[11px] leading-tight ${step.state === "todo" ? "text-muted/70" : "text-fg"}`}
+            >
               {step.label}
             </span>
           </li>
         ))}
       </ol>
-      <h2 className="text-lg font-semibold">{title}</h2>
-      {now !== undefined && <p className="mt-1 text-sm text-neutral-600">{body}</p>}
+      <h2 className="text-lg font-semibold tracking-tight sm:text-xl">{title}</h2>
+      {now !== undefined && <p className="mt-1 text-sm text-muted">{body}</p>}
       {children && <div className="mt-4">{children}</div>}
     </Card>
   );

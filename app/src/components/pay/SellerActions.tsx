@@ -29,9 +29,9 @@ export function SellerActions({ payload, order, now, onChanged }: OrderActionPro
         />
       )}
       {actions.cancel && (
-        <details className="rounded-xl bg-neutral-50 p-3 text-sm">
-          <summary className="cursor-pointer text-neutral-600">Can&apos;t fulfil this order?</summary>
-          <p className="mt-2 text-xs text-neutral-600">
+        <details className="rounded-xl bg-surface-muted p-3 text-sm">
+          <summary className="cursor-pointer text-muted">Can&apos;t fulfil this order?</summary>
+          <p className="mt-2 text-xs text-muted">
             Out of stock, or someone you don&apos;t know paid this link? Cancel and the buyer gets the full
             amount back straight away.
           </p>
@@ -44,7 +44,7 @@ export function SellerActions({ payload, order, now, onChanged }: OrderActionPro
           />
         </details>
       )}
-      {tx.error && <p className="px-1 text-sm text-red-700">{tx.error}</p>}
+      {tx.error && <p className="px-1 text-sm text-danger">{tx.error}</p>}
     </div>
   );
 }
