@@ -1,21 +1,144 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. Every colour is a CSS variable so light and dark themes stay
+ * in one place; components use semantic classes (bg-surface, text-muted …)
+ * rather than raw palette colours.
+ */
 :root {
-  --background: #f6f7f5;
-  --foreground: #14181f;
+  --bg: #f4f6f5;
+  --bg-accent: #e9f5ee;
+  --surface: #ffffff;
+  --surface-muted: #f5f7f6;
+  --fg: #0f1512;
+  --muted: #5a6b64;
+  --border: rgb(15 21 18 / 0.08);
+  --border-strong: rgb(15 21 18 / 0.16);
+
+  --brand: #10893f;
+  --brand-strong: #0c6e32;
+  --brand-soft: #e6f4ea;
+  --on-brand: #ffffff;
+
+  --success: #0f7a3d;
+  --success-soft: #e6f4ea;
+  --warning: #8a5a00;
+  --warning-soft: #fdf3e0;
+  --danger: #b3261e;
+  --danger-soft: #fdecec;
+
+  --shadow-card: 0 1px 2px rgb(15 21 18 / 0.04), 0 8px 24px -12px rgb(15 21 18 / 0.12);
+  --shadow-raised: 0 2px 4px rgb(15 21 18 / 0.06), 0 16px 32px -16px rgb(15 21 18 / 0.24);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b100e;
+    --bg-accent: #0e1a14;
+    --surface: #141b18;
+    --surface-muted: #1a221e;
+    --fg: #e9efec;
+    --muted: #9aaba4;
+    --border: rgb(233 239 236 / 0.10);
+    --border-strong: rgb(233 239 236 / 0.20);
+
+    --brand: #2fbe63;
+    --brand-strong: #25a153;
+    --brand-soft: rgb(47 190 99 / 0.14);
+    --on-brand: #06220f;
+
+    --success: #4ed17f;
+    --success-soft: rgb(78 209 127 / 0.14);
+    --warning: #e0b063;
+    --warning-soft: rgb(224 176 99 / 0.14);
+    --danger: #ff8a80;
+    --danger-soft: rgb(255 138 128 / 0.14);
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+    --shadow-raised: 0 2px 4px rgb(0 0 0 / 0.5), 0 16px 32px -16px rgb(0 0 0 / 0.7);
+  }
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-brand: #16a34a;
-  --color-brand-dark: #15803d;
+  --color-bg: var(--bg);
+  --color-bg-accent: var(--bg-accent);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-on-brand: var(--on-brand);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-raised: var(--shadow-raised);
+
+  /* Fluid display sizes: readable on a 320px phone, generous on a tablet. */
+  --text-display: clamp(2rem, 1.4rem + 3vw, 2.75rem);
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+  --text-hero: clamp(1.5rem, 1.2rem + 1.8vw, 2rem);
+  --text-hero--line-height: 1.15;
+  --text-hero--letter-spacing: -0.015em;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+@layer base {
+  html {
+    color-scheme: light dark;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background:
+      radial-gradient(60rem 30rem at 50% -12rem, var(--color-bg-accent), transparent 70%),
+      var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
+
+  /* Visible, consistent keyboard focus everywhere. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+
+  /* Inputs at 16px+ so iOS Safari doesn't zoom when they're focused. */
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+
+@utility safe-top {
+  padding-top: max(env(safe-area-inset-top), 0px);
 }

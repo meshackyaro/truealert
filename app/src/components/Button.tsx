@@ -3,22 +3,38 @@ import type { ButtonHTMLAttributes } from "react";
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   busy?: boolean;
   variant?: "primary" | "secondary" | "danger";
+  size?: "md" | "lg";
 };
 
 const variants = {
-  primary: "bg-brand text-white hover:bg-brand-dark disabled:bg-neutral-300",
-  secondary: "bg-white text-neutral-900 ring-1 ring-neutral-300 hover:bg-neutral-50 disabled:text-neutral-400",
-  danger: "bg-white text-red-700 ring-1 ring-red-300 hover:bg-red-50 disabled:text-neutral-400",
+  primary:
+    "bg-brand text-on-brand shadow-card hover:bg-brand-strong disabled:bg-border-strong disabled:text-muted disabled:shadow-none",
+  secondary:
+    "bg-surface text-fg ring-1 ring-border-strong hover:bg-surface-muted disabled:text-muted",
+  danger: "bg-surface text-danger ring-1 ring-danger/30 hover:bg-danger-soft disabled:text-muted",
 };
 
-/** Full-width, thumb-sized button with a busy state. */
-export function Button({ busy, variant = "primary", disabled, children, className = "", ...rest }: Props) {
+const sizes = {
+  md: "min-h-11 px-4 py-2.5 text-sm",
+  lg: "min-h-13 px-5 py-3 text-base",
+};
+
+/** Full-width, thumb-sized button with busy state and press feedback. */
+export function Button({
+  busy,
+  variant = "primary",
+  size = "lg",
+  disabled,
+  children,
+  className = "",
+  ...rest
+}: Props) {
   return (
     <button
       type="button"
       disabled={disabled || busy}
       aria-busy={busy}
-      className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-base font-semibold transition-colors disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+      className={`flex w-full items-center justify-center gap-2 rounded-xl font-semibold transition-[background-color,color,transform,box-shadow] duration-150 active:scale-[0.99] disabled:cursor-not-allowed disabled:active:scale-100 ${variants[variant]} ${sizes[size]} ${className}`}
       {...rest}
     >
       {busy && (
