@@ -85,7 +85,11 @@ async function main() {
     rate: { ngnPerUsd: NGN_PER_USD, source: "quidax", at: new Date().toISOString() },
   };
 
-  // Anvil's latest block can be minutes old; the next block uses wall-clock time.
+  // Anvil only mines when there's a transaction, so its latest block can be
+  // minutes stale — and the next mined block jumps forward by all that elapsed
+  // real time, which would instantly expire a link priced off the stale block.
+  // Mine one first so "now" is current. (Real chains mine every ~5s.)
+  await client.request({ method: "evm_mine" as never, params: [] as never }).catch(() => {});
   const blockTime = (await client.getBlock()).timestamp;
   const wallClock = BigInt(Math.floor(Date.now() / 1000));
   const now = blockTime > wallClock ? blockTime : wallClock;

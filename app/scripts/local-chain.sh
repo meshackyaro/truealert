@@ -16,7 +16,9 @@ RPC=http://127.0.0.1:8545
 DEPLOYER_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 BUYER=0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 
-anvil --hardfork london --silent &
+# --block-time 1 keeps the chain clock moving like a real network; on an
+# idle chain anvil's latest block goes stale and time jumps when a tx lands.
+anvil --hardfork london --block-time 1 --silent &
 ANVIL_PID=$!
 trap 'kill $ANVIL_PID 2>/dev/null' EXIT
 
