@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { WalletGate } from "@/components/pay/WalletGate";
+import { useChainNow } from "@/hooks/useChainNow";
 import { useCreateSale, type CreatedSale } from "@/hooks/useCreateSale";
+import { addSale, loadSales, type RecentSale } from "@/lib/recentSales";
 import { Mode } from "@/lib/terms";
 import { NewSaleForm } from "./NewSaleForm";
+import { RecentSales } from "./RecentSales";
 import { SaleCreated } from "./SaleCreated";
 
-/** Seller home: create a sale, then show its QR / share link. */
+/** Seller home: create a sale, then show its QR / share link, plus recent sales. */
 export function SellScreen() {
   const { isConnected } = useAccount();
   return (
@@ -36,6 +39,9 @@ function Seller() {
   const { address } = useAccount();
   const { create, busy, error } = useCreateSale();
   const [sale, setSale] = useState<CreatedSale>();
+  const now = useChainNow();
+  // Sales live in this device's storage; the list only renders once connected.
+  const [sales, setSales] = useState<RecentSale[]>(() => (address ? loadSales(localStorage, address) : []));
 
   if (!address) return null;
 
@@ -49,13 +55,29 @@ function Seller() {
       <NewSaleForm
         seller={address}
         busy={busy}
-        submitLabel={(mode) => (busy ? "Sign in your wallet…" : mode === Mode.PayNow ? "Create payment QR" : "Create payment link")}
+        submitLabel={(mode) =>
+          busy ? "Sign in your wallet…" : mode === Mode.PayNow ? "Create payment QR" : "Create payment link"
+        }
         onSubmit={async (input) => {
           const created = await create(input);
-          if (created) setSale(created);
+          if (!created) return;
+          addSale(localStorage, address, {
+            url: created.url,
+            fromBlock: created.fromBlock.toString(),
+            createdAt: Date.now(),
+          });
+          setSales(loadSales(localStorage, address));
+          setSale(created);
         }}
       />
       {error && <p className="px-1 text-sm text-red-700">{error}</p>}
+      <RecentSales
+        sales={sales}
+        now={now}
+        onOpen={(recent) =>
+          setSale({ payload: recent.payload, url: recent.url, fromBlock: BigInt(recent.fromBlock) })
+        }
+      />
     </>
   );
 }

@@ -167,6 +167,30 @@ async function main() {
       },
       SELLER,
     );
+
+    await scenario(
+      context,
+      "Recent sales list tracks status and reopens a sale",
+      async (seller) => {
+        await createSale(seller, { item: "Recharge card", price: "500" });
+        await seller.getByRole("button", { name: "Copy payment link" }).click();
+        const url = await seller.evaluate(() => navigator.clipboard.readText());
+        await seller.getByRole("button", { name: "New sale" }).click();
+
+        const row = seller.getByRole("button", { name: /Recharge card/ });
+        await row.getByText("Waiting for payment").waitFor();
+
+        const buyer = await pageAs(browser, BUYER);
+        await buyerPays(buyer, url, /^Pay ₦500/, (p) => p.getByRole("heading", { name: "Paid" }).waitFor());
+        await buyer.close();
+
+        await row.getByText("Paid ✓").waitFor({ timeout: 20_000 });
+        await seller.screenshot({ path: join(shots, "seller-recent-sales.png"), fullPage: true });
+        await row.click();
+        await seller.getByText("PAID ✓").waitFor(); // reopened, with its live status
+      },
+      SELLER,
+    );
   } finally {
     await browser.close();
   }
