@@ -14,20 +14,26 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TrueAlert",
+  title: { default: "TrueAlert", template: "%s · TrueAlert" },
   description: "No more fake alert. Get paid safely on Electroneum, in person or in the DMs.",
+  applicationName: "TrueAlert",
+  appleWebApp: { capable: true, title: "TrueAlert", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#16a34a",
+  viewportFit: "cover", // let the page paint into notched phones' safe areas
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4f6f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b100e" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-full flex-col">
         <Providers>{children}</Providers>
       </body>
     </html>

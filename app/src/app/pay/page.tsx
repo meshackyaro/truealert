@@ -11,12 +11,12 @@ function encodedParam(value: string | string[] | undefined): string {
 
 export async function generateMetadata({ searchParams }: PageProps<"/pay">): Promise<Metadata> {
   const result = decodeLink(encodedParam((await searchParams).d));
-  if (!result.ok) return { title: "Pay · TrueAlert" };
+  if (!result.ok) return { title: "Pay" };
   const { details, terms } = result.payload;
   const price = formatNaira(details.priceNgn);
   const kind = terms.mode === Mode.Protected ? "Protected payment" : "Payment";
   return {
-    title: `Pay ${price} · ${details.item} · TrueAlert`,
+    title: `Pay ${price} · ${details.item}`,
     description: `${kind} to ${details.sellerName ?? "a seller"} for ${details.item}, ${price}. Secured on Electroneum.`,
     robots: { index: false },
   };

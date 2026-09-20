@@ -35,8 +35,17 @@ export function SaleCreated({ sale, onNew }: { sale: CreatedSale; onNew: () => v
 
         {!isProtected && !settled && (
           <>
-            <div className="mx-auto mt-4 w-full max-w-72 rounded-2xl bg-surface p-3 ring-1 ring-border">
-              <QRCodeSVG value={sale.url} size={512} level="L" className="h-auto w-full" title="Payment QR code" />
+            {/* Always dark-on-white: inverted QR codes confuse many scanners. */}
+            <div className="mx-auto mt-4 w-full max-w-72 rounded-2xl bg-white p-3 ring-1 ring-border">
+              <QRCodeSVG
+                value={sale.url}
+                size={512}
+                level="L"
+                fgColor="#000000"
+                bgColor="#ffffff"
+                className="h-auto w-full"
+                title="Payment QR code"
+              />
             </div>
             <p className="mt-3 text-sm font-medium">Customer scans with their phone camera or wallet</p>
           </>
@@ -91,8 +100,16 @@ function ShareLink({ sale, amount }: { sale: CreatedSale; amount: string }) {
       </div>
       <details className="mt-3 text-sm">
         <summary className="cursor-pointer text-muted">Show QR code</summary>
-        <div className="mx-auto mt-3 w-full max-w-64">
-          <QRCodeSVG value={sale.url} size={512} level="L" className="h-auto w-full" title="Payment link QR code" />
+        <div className="mx-auto mt-3 w-full max-w-64 rounded-xl bg-white p-3">
+          <QRCodeSVG
+            value={sale.url}
+            size={512}
+            level="L"
+            fgColor="#000000"
+            bgColor="#ffffff"
+            className="h-auto w-full"
+            title="Payment link QR code"
+          />
         </div>
       </details>
     </Card>
