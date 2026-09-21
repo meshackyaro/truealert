@@ -10,6 +10,7 @@
     "build": "pnpm --dir app install --frozen-lockfile && pnpm --dir app build",
     "test": "pnpm --dir app test && cd contracts && forge test",
     "e2e": "pnpm --dir app e2e",
-    "testnet-smoke": "pnpm --dir app testnet-smoke"
+    "testnet-smoke": "pnpm --dir app testnet-smoke",
+    "e2e:seller": "pnpm --dir app e2e:seller"
   }
 }
