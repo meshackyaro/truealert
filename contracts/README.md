@@ -65,6 +65,32 @@ Testnet deployment (19 Sep 2026): owner `0x43bcA2D4f5398117c3516499609c6e11909d9
 
 Deploy with `--legacy`: Foundry's EIP-1559 fee estimate on Electroneum comes out far below the node's ~1 gwei gas price.
 
+### Verifying the deployment
+
+Check that the deployed contracts are exactly what this repo compiles to:
+
+```bash
+forge build
+python3 scripts/verify-deployment.py
+```
+
+```
+TrueAlert at 0x83A5…5d34: MATCHES (12305 bytes; 7 immutable slots masked; source metadata hash matches)
+MockUSDC at 0x3F2f…16a5: MATCHES (2000 bytes; 0 immutable slots masked; source metadata hash matches)
+```
+
+It compares on-chain bytecode with the build output byte for byte. Only the constructor-set immutables are masked, using the compiler's own map of where they sit. The trailing metadata embeds a hash of the exact sources and compiler settings, so a match gives the same guarantee as explorer source verification. For another deployment, pass `--rpc <url> TrueAlert=0x… MockUSDC=0x…`.
+
+Explorer (Blockscout) verification is still pending: the Electroneum testnet explorer has been unreachable since 19 Sep 2026, and Sourcify doesn't support Electroneum. When the explorer is back:
+
+```bash
+forge verify-contract 0x3F2f8D53F9A306eF2A1eF819EC8844883c1916a5 src/MockUSDC.sol:MockUSDC \
+  --verifier blockscout --verifier-url https://testnet-blockexplorer.electroneum.com/api/ --chain 5201420
+forge verify-contract 0x83A51C54C78a84fAF09d34B92c8475B9F12a5d34 src/TrueAlert.sol:TrueAlert \
+  --verifier blockscout --verifier-url https://testnet-blockexplorer.electroneum.com/api/ --chain 5201420 \
+  --constructor-args $(cast abi-encode "constructor(address)" 0x43bcA2D4f5398117c3516499609c6e11909d90E9)
+```
+
 ## How TrueAlert works
 
 **Pay now:** `payInvoice(terms, sig)` checks the seller's signature, expiry, single use and token allowlist, then moves the exact amount straight from buyer to seller. The contract never holds pay-now funds, and there's no fee.

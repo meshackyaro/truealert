@@ -225,6 +225,8 @@ forge script script/Deploy.s.sol --rpc-url electroneum_testnet --broadcast --leg
 
 The script deploys `MockUSDC` (unless `USDC` is set), deploys `TrueAlert`, allowlists USDC, and prints both addresses. Put them in `app/.env`.
 
+To confirm a deployment matches the source, run `python3 scripts/verify-deployment.py` (from `contracts/`, after `forge build`). See [Verifying the deployment](../contracts/README.md#verifying-the-deployment).
+
 Two Electroneum specifics, both already handled in the repo:
 
 - Contracts compile for the `paris` EVM target (`foundry.toml`), because Electroneum rejects the `PUSH0` opcode used by newer targets.

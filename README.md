@@ -41,7 +41,7 @@ Payment links are self-contained: they carry the seller-signed terms and the ord
 | TrueAlert | `0x83A51C54C78a84fAF09d34B92c8475B9F12a5d34` |
 | MockUSDC (test USDC, 6 decimals) | `0x3F2f8D53F9A306eF2A1eF819EC8844883c1916a5` |
 
-Chain ID `5201420`, RPC `https://rpc.ankr.com/electroneum_testnet`. Deployment transactions and details are in [contracts/README.md](contracts/README.md). Mainnet is not deployed yet.
+Chain ID `5201420`, RPC `https://rpc.ankr.com/electroneum_testnet`. The deployed bytecode matches this repo's source exactly ([how to check](contracts/README.md#verifying-the-deployment)). Deployment transactions and details are in [contracts/README.md](contracts/README.md). Mainnet is not deployed yet.
 
 ## Tech stack
 
@@ -120,7 +120,7 @@ If you use WalletConnect, add the deployed domain to the project's allowlist in 
 **Next:**
 - Short links with WhatsApp preview cards (also makes the pay-now QR much easier to scan)
 - Buyer delivery details, and a seller dashboard that works across devices
-- Contract source verification on the testnet explorer (waiting on the explorer, which is currently down)
+- Source verification on the testnet explorer, once it's back up. Meanwhile the deployed bytecode is verified against this repo's source with [`contracts/scripts/verify-deployment.py`](contracts/README.md#verifying-the-deployment)
 - Mainnet deployment, after a wallet-compatibility check and an independent contract review
 
 ## License
