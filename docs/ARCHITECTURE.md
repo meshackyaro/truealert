@@ -167,8 +167,32 @@ UI details that matter on real phones:
 
 - **EVM level:** Electroneum supports opcodes up to London. Contracts compile for `paris`; anything newer fails to deploy with `invalid opcode: PUSH0`. The local chain runs `anvil --hardfork london` to match.
 - **Gas:** Foundry's EIP-1559 estimate comes out far below the ~1 gwei network price, so deploys use `--legacy`. The app's wallet transactions estimate correctly.
-- **Stablecoins:** mainnet has Hyperlane-bridged USDC and USDT, with thin liquidity (about $6k each at the time of writing). Testnet has no canonical stablecoin, so TrueAlert deploys its own `MockUSDC` (6 decimals, like mainnet USDC).
+- **Stablecoins:** mainnet has USDC and USDT bridged in through Hyperlane, with thin liquidity (about $6k each at the time of writing). Testnet has none, so TrueAlert deploys its own `MockUSDC`; see [Why MockUSDC on testnet](#why-mockusdc-on-testnet).
 - **Wallets:** MetaMask, Rabby, Trust (manual network) and Zypto (ETN built in) support the chain.
+
+### Why MockUSDC on testnet
+
+TrueAlert's testnet deployment uses its own `MockUSDC` rather than an existing USDC token. That's deliberate: there is no trustworthy USDC or USDT on Electroneum testnet.
+
+We checked every authority that could vouch for one (21 Sep 2026):
+
+| Source | What it shows |
+| --- | --- |
+| [Circle's USDC address list](https://developers.circle.com/stablecoins/usdc-contract-addresses) | No Electroneum network, mainnet or testnet, although the list includes other testnets |
+| [Tether's supported chains](https://tether.to/en/supported-protocols/) | No Electroneum network |
+| [Hyperlane registry](https://github.com/hyperlane-xyz/hyperlane-registry) | Of 348 chains, Electroneum **mainnet** (52014) is present with USDC and USDT routes; the **testnet** (5201420) is absent |
+| [Electroneum developer docs](https://developer.electroneum.com) | No official USDC or USDT listed for testnet |
+
+So the USDC and USDT on Electroneum mainnet arrive through the Hyperlane bridge, and that bridge doesn't serve testnet.
+
+What *is* on testnet are tokens other developers deployed for their own testing. On 19 Sep 2026 the testnet explorer listed 46 tokens named some variant of USDC or USDT. None has an identifiable issuer, nobody outside controls how they're minted, and some are deliberately deceptive: one is named "USDT Official ✅ VERIFIED", and another carries HTML-injection code in its name. Building on one would mean trusting an anonymous deployer, and it could stop working at any time.
+
+`MockUSDC` avoids all of that while behaving like the real token:
+
+- **It matches mainnet USDC**: a standard OpenZeppelin ERC-20 with 6 decimals, so amounts, rounding and approvals work identically.
+- **Anyone can get test funds**: open minting, capped at 10,000 per call, powers the buyer page's **Get free test USDC** button, so reviewers can try a payment without hunting for a faucet.
+- **It's clearly a test token**: the contract is named "Mock USD Coin", and the app shows a **Testnet** badge on every screen.
+- **Moving to mainnet is configuration, not code**: allowlist the Hyperlane-bridged USDC (`0x3187deAd7A2Bd6770F5Fe81495D1B715926AAe6e`) in the contract and set `NEXT_PUBLIC_USDC_ADDRESS`. Neither the contract nor the app changes.
 
 ## Key decisions
 
@@ -180,3 +204,4 @@ UI details that matter on real phones:
 | Round token amounts up | the seller never gets less than the naira price | the buyer may pay up to 0.01 more |
 | Two-way timeouts, optional referee | no one can hold the other's money hostage | a dishonest "shipped" needs a referee to catch |
 | Non-upgradeable contract | nothing can change the rules under funded orders | fixes need a new deployment |
+| Own `MockUSDC` on testnet | no official USDC exists there, and the community tokens are untrustworthy | testnet "dollars" aren't redeemable, by design |

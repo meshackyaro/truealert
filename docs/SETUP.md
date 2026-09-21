@@ -183,6 +183,8 @@ The app also offers to add or switch to this network when you connect.
 - **Test ETN** (for gas): the [Electroneum faucet](https://faucet.electroneum.com).
 - **Test USDC**: on the buyer page, a buyer who's short gets a **Get free test USDC** button, which mints from `MockUSDC`.
 
+TrueAlert uses its own `MockUSDC` on testnet on purpose: there's no official USDC or USDT on Electroneum testnet, and the tokens that use those names there are unverified community deployments. The reasons and sources are in [Why MockUSDC on testnet](ARCHITECTURE.md#why-mockusdc-on-testnet). On mainnet, TrueAlert uses the real, Hyperlane-bridged USDC.
+
 ### Point the app at testnet
 
 Create `app/.env` (or edit it) with the deployed testnet contracts:
