@@ -2,6 +2,8 @@
 
 **No more fake alert.** A mobile-first payment tool on the Electroneum blockchain that lets Nigerian small sellers get paid safely, in person or in the DMs.
 
+**Docs:** [Setup guide](docs/SETUP.md) · [Architecture](docs/ARCHITECTURE.md) · [Contracts](contracts/README.md) · [Web app](app/README.md)
+
 ## The problem
 
 - **Fake alerts, in person.** Customers show forged "I've sent it" screenshots or SMS alerts. TrueAlert confirms payment on the **seller's own screen**, read from the blockchain, so a screenshot proves nothing.
@@ -62,10 +64,13 @@ Contracts compile for the `paris` EVM target, because Electroneum doesn't suppor
 
 ## Repository layout
 
+- [`docs/`](docs/): the [setup guide](docs/SETUP.md) (fresh machine to a working payment, testnet, deployment, troubleshooting) and the [architecture](docs/ARCHITECTURE.md).
 - [`contracts/`](contracts/README.md): Solidity contracts, tests and deployment scripts.
 - [`app/`](app/README.md): the Next.js web app, local-chain tooling and end-to-end tests.
 
 ## Quick start (local, no testnet needed)
+
+The short version is below. For MetaMask setup, test accounts, testnet and troubleshooting, follow the [setup guide](docs/SETUP.md).
 
 ```bash
 git clone --recurse-submodules https://github.com/meshackyaro/truealert.git

@@ -1,5 +1,7 @@
 # TrueAlert contracts
 
+New here? Start with the [setup guide](../docs/SETUP.md). How it all fits together: [architecture](../docs/ARCHITECTURE.md).
+
 Solidity contracts for TrueAlert, built with [Foundry](https://book.getfoundry.sh/).
 
 | Contract | Purpose |

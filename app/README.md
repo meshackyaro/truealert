@@ -1,5 +1,7 @@
 # TrueAlert app
 
+New here? Start with the [setup guide](../docs/SETUP.md). How it all fits together: [architecture](../docs/ARCHITECTURE.md).
+
 Next.js 16 web app for TrueAlert.
 
 | Route | What it is |
